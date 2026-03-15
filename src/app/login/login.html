@@ -8,13 +8,27 @@
   <title>Document</title>
 </head>
 <body>
-<form [formGroup]="loginForm">
-  <label for="email">Email: </label>
-  <input id="email" type="email" formControlName="email" />
-  <label for="password">Password </label>
-  <input id="password" type="password" formControlName="password" />
-  <button type="submit">Login</button>
-</form>
-
+<div class="container">
+  <mat-card>
+    <mat-card-title>Login</mat-card-title>
+    <mat-card-content>
+      <form [formGroup]="loginForm" (ngSubmit)="login()">
+        <div style="display: flex; flex-direction: column">
+          <!--Email-->
+          <mat-form-field appearance="outline">
+            <mat-label>Email: </mat-label>
+            <input type="email" matInput formControlName="email">
+          </mat-form-field>
+          <!--Password-->
+          <mat-form-field appearance="outline">
+            <mat-label>Password: </mat-label>
+            <input type="password" matInput formControlName="email">
+          </mat-form-field>
+          <button mat-raised-button color="primary" type="submit">Login</button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
 </body>
 </html>
