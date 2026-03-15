@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
+import {Role} from '../models/role.enum';
 import { FormGroup, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/material/card';
 import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { MatButton } from '@angular/material/button';
-import {MatCheckbox} from '@angular/material/checkbox';
 
 @Component({
   selector: 'app-register',
@@ -20,12 +20,15 @@ import {MatCheckbox} from '@angular/material/checkbox';
     MatOption,
     MatButton,
     MatCardHeader,
-    MatCheckbox,
   ],
   templateUrl: './register.html',
   styleUrl: './register.css',
 })
+
 export class Register {
+  Role = Role;
+  items = ['Snow Shovelling', 'Babysitting', 'Tutoring', 'Lawn Mowing'];
+
   registerForm = new FormGroup({
     firstName: new FormControl('', [Validators.required]),
     lastName: new FormControl('', [Validators.required]),
@@ -39,7 +42,10 @@ export class Register {
       province: new FormControl('', [Validators.required]),
       postalCode: new FormControl('', [Validators.required]),
     }),
-  });
+
+    role: new FormControl<Role | null>(null, [Validators.required]),
+    services: new FormControl<string[]>([], [Validators.required]),
+  })
   register() {
     //to do
   }
