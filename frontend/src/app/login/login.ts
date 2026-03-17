@@ -20,12 +20,17 @@ import { AuthService } from '../services/auth.service';
     RouterLink,
   ],
   templateUrl: './login.html',
-  styleUrl: './login.css',
+  styleUrls: ['./login.css'],
 })
 export class LoginComponent {
   loginForm = new FormGroup({
-    email: new FormControl('', [Validators.required]),
-    password: new FormControl('', [Validators.required]),
+    email: new FormControl('', [
+      Validators.required, 
+      Validators.email]),
+
+    password: new FormControl('', [
+      Validators.required
+    ]),
   });
 
   constructor(private authService: AuthService) {}
