@@ -1,113 +1,123 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport"
-        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Document</title>
 </head>\
+
 <body>
-<div class="container">
-  <mat-card>
-    <mat-card-title>Register</mat-card-title>
-    <mat-card-content>
-      <div style="display: inline">
-        <p>Already have an account?</p>
-        <a routerLink="/login">Login Here</a>
-      </div>
-      <form [formGroup]="registerForm" (ngSubmit)="register()">
+  <div class="container">
+    <mat-card>
+      <mat-card-title>Register</mat-card-title>
+      <mat-card-content>
+        <div style="display: inline">
+          <p>Already have an account?</p>
+          <a routerLink="/login">Login Here</a>
+        </div>
+        <form [formGroup]="registerForm" (ngSubmit)="register()">
 
-        <div style="display: flex; flex-direction: column">
-          <!-- First Name -->
-          <mat-form-field appearance="outline">
-            <mat-label>First Name: </mat-label>
-            <input matInput formControlName="firstName" />
-          </mat-form-field>
-          <!-- Last Name -->
-          <mat-form-field appearance="outline">
-            <mat-label>Last Name: </mat-label>
-            <input matInput formControlName="lastName" />
-          </mat-form-field>
-          <!-- Phone Number -->
-          <mat-form-field appearance="outline">
-            <mat-label>PhoneNumber: </mat-label>
-            <input matInput formControlName="phoneNumber" />
-          </mat-form-field>
-          <!-- Date Of Birth -->
-          <mat-form-field appearance="outline">
-            <mat-label>Date Of Birth: </mat-label>
-            <input type="date" matInput formControlName="dateOfBirth" />
-          </mat-form-field>
-          <!-- Email -->
-          <mat-form-field appearance="outline">
-            <mat-label>Email: </mat-label>
-            <input type="email" matInput formControlName="email" />
-          </mat-form-field>
-          <!-- Password -->
-          <mat-form-field appearance="outline">
-            <mat-label>Password: </mat-label>
-            <input type="password" matInput formControlName="password" />
-          </mat-form-field>
-          <!-- Address -->
-          <mat-label>Address</mat-label>
-
-          <div formGroupName="addressForm">
-            <!-- Street -->
+          <div style="display: flex; flex-direction: column">
+            <!-- First Name -->
             <mat-form-field appearance="outline">
-              <mat-label>Street Name:</mat-label>
-              <input matInput formControlName="street" />
+              <mat-label>First Name: </mat-label>
+              <input matInput formControlName="firstName" />
             </mat-form-field>
-
-            <!-- City -->
+            <!-- Last Name -->
             <mat-form-field appearance="outline">
-              <mat-label>City:</mat-label>
-              <input matInput formControlName="city" />
+              <mat-label>Last Name: </mat-label>
+              <input matInput formControlName="lastName" />
             </mat-form-field>
-
-            <!-- Province -->
+            <!-- Phone Number -->
             <mat-form-field appearance="outline">
-              <mat-label>Province:</mat-label>
-              <mat-select formControlName="province">
-                <mat-option value="ON">Ontario</mat-option>
-                <mat-option value="BC">British Columbia</mat-option>
-                <mat-option value="QC">Quebec</mat-option>
+              <mat-label>PhoneNumber: </mat-label>
+              <input matInput formControlName="phoneNumber" />
+            </mat-form-field>
+            <!-- Date Of Birth -->
+            <mat-form-field appearance="outline">
+              <mat-label>Date Of Birth: </mat-label>
+              <input type="date" matInput formControlName="dateOfBirth" />
+            </mat-form-field>
+            <!-- Email -->
+            <mat-form-field appearance="outline">
+              <mat-label>Email: </mat-label>
+              <input type="email" matInput formControlName="email" />
+            </mat-form-field>
+            <!-- Password -->
+            <mat-form-field appearance="outline">
+              <mat-label>Password: </mat-label>
+              <input type="password" matInput formControlName="password" />
+            </mat-form-field>
+            <!-- Address -->
+            <mat-label>Address</mat-label>
+
+            <div formGroupName="addressForm">
+              <!-- Street -->
+              <mat-form-field appearance="outline">
+                <mat-label>Street Name:</mat-label>
+                <input matInput formControlName="street" />
+              </mat-form-field>
+
+              <!-- City -->
+              <mat-form-field appearance="outline">
+                <mat-label>City:</mat-label>
+                <input matInput formControlName="city" />
+              </mat-form-field>
+
+              <!-- Province -->
+              <mat-form-field appearance="outline">
+                <mat-label>Province:</mat-label>
+                <mat-select formControlName="province">
+                  <mat-option value="ON">Ontario</mat-option>
+                  <mat-option value="BC">British Columbia</mat-option>
+                  <mat-option value="QC">Quebec</mat-option>
+                  <mat-option value="AB">Alberta</mat-option>
+                  <mat-option value="NS">Nova Scotia</mat-option>
+                  <mat-option value="NB">New Brunswick</mat-option>
+                  <mat-option value="MB">Manitoba</mat-option>
+                  <mat-option value="PE">Prince Edward Island</mat-option>
+                  <mat-option value="SK">Saskatchewan</mat-option>
+                  <mat-option value="NL">Newfoundland and Labrador</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <!-- Postal Code -->
+              <mat-form-field appearance="outline">
+                <mat-label>Postal Code:</mat-label>
+                <input matInput formControlName="postalCode" />
+              </mat-form-field>
+            </div>
+            <!-- Role -->
+            <mat-form-field appearance="outline">
+              <mat-label>Register as a...</mat-label>
+              <mat-select formControlName="role">
+                <mat-option [value]="Role.PROVIDER">Provider</mat-option>
+                <mat-option [value]="Role.REQUESTER">Requester</mat-option>
               </mat-select>
             </mat-form-field>
-
-            <!-- Postal Code -->
-            <mat-form-field appearance="outline">
-              <mat-label>Postal Code:</mat-label>
-              <input matInput formControlName="postalCode" />
-            </mat-form-field>
-          </div>
-          <!-- Role -->
-          <mat-form-field appearance="outline">
-            <mat-label>Role</mat-label>
-            <mat-select formControlName="role">
-              <mat-option [value]="Role.PROVIDER">Provider</mat-option>
-              <mat-option [value]="Role.REQUESTER">Requester</mat-option>
-            </mat-select>
-          </mat-form-field>
-          @if (registerForm.get('role')?.value === 'PROVIDER') {
+            @if (registerForm.get('role')?.value === 'PROVIDER') {
             <!-- Services Provided -->
             <mat-form-field appearance="outline">
               <mat-label>Services Provided</mat-label>
               <mat-select formControlName="services" multiple>
                 @for (item of items; track item) {
-                  <mat-option [value]="item">{{ item }}</mat-option>
+                <mat-option [value]="item">{{ item }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
-          }
+            }
 
-          <button mat-raised-button color="primary" type="submit" >Register</button>
-        </div>
+            <button mat-raised-button color="primary" type="submit">Register</button>
+          </div>
 
-      </form>
-    </mat-card-content>
-  </mat-card>
-</div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  </div>
 
 </body>
+
 </html>
