@@ -25,6 +25,7 @@ import { AuthService } from '../services/auth.service';
   ],
   templateUrl: './register.html',
   styleUrl: './register.css',
+  standalone: true
 })
 export class RegisterComponent {
   Role = Role;
@@ -65,10 +66,14 @@ export class RegisterComponent {
 
   register() {
     if (this.registerForm.valid) {
-      this.authService.register(this.registerForm.value);
-      console.log('Register success');
-      this.registerForm.reset();
-    }
+      this.authService.register(this.registerForm.value).subscribe({
+        next: (res) => {
+          console.log('Register success', res);
+          this.registerForm.reset();
+        },
+        error: (err) => {
+          console.error('Register failed', err);
+        }
+      });
   }
-
-}
+    }}

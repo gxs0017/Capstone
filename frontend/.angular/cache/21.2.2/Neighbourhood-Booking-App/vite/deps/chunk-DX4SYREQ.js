@@ -7,7 +7,7 @@ import {
   isFakeMousedownFromScreenReader,
   isFakeTouchstartFromScreenReader,
   normalizePassiveListenerOptions
-} from "./chunk-LGQAYDIW.js";
+} from "./chunk-QNJ6PF5V.js";
 import {
   BidiModule
 } from "./chunk-Y3FEEK7E.js";
@@ -581,4 +581,4 @@ export {
   _StructuralStylesLoader,
   MatRippleModule
 };
-//# sourceMappingURL=chunk-UA7EBF7I.js.map
+//# sourceMappingURL=chunk-DX4SYREQ.js.map

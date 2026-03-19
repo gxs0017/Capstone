@@ -1,15 +1,17 @@
 import { Injectable } from '@angular/core';
+import {HttpClient} from '@angular/common/http';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
+  constructor(private http: HttpClient) { }
+
   private users: any[] = [];
 
   register(user: any) {
-    this.users.push(user);
-    localStorage.setItem('mockUsers', JSON.stringify(this.users));
-    console.log('Registered users:', this.users); // verify shape
+    return this.http.post('http://localhost:5000/api/auth/register', user)
+
   }
 
   login(email: string, password: string) {

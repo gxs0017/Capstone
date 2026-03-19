@@ -21,6 +21,7 @@ import { AuthService } from '../services/auth.service';
   ],
   templateUrl: './login.html',
   styleUrl: './login.css',
+  standalone: true
 })
 export class LoginComponent {
   loginForm = new FormGroup({
