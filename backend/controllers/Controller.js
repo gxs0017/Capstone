@@ -39,6 +39,27 @@ const registerUser = async (req, res) => {
     }
 };
 
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        res.json({ user: {id: user.id, email: user.email, role: user.role} });
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).send('Server error');
+    }
+};
+
 const getUsers = async (req, res) => {
     try {
         const users = await User.find({});
@@ -48,4 +69,4 @@ const getUsers = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, getUsers };
+module.exports = { registerUser, loginUser, getUsers };

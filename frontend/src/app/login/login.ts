@@ -3,7 +3,7 @@ import { FormGroup, FormControl, ReactiveFormsModule, Validators } from '@angula
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
 import { MatButton } from '@angular/material/button';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 @Component({
@@ -33,19 +33,21 @@ export class LoginComponent {
     ]),
   });
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private router: Router) {}
 
   login() {
-    const user = this.authService.login(
-      this.loginForm.value.email!,
-      this.loginForm.value.password!);
-
-    if (user) {
-      console.log('Login success');
-    } else {
-      console.log('Invalid login');
+    if (this.loginForm.valid) {
+      this.authService.login(this.loginForm.value.email!, this.loginForm.value.password!).subscribe({
+        next: (response) => {
+          console.log('Login successful', response);
+          // Navigate to a dashboard or home page
+          this.router.navigate(['/test']); 
+        },
+        error: (err) => {
+          console.error('Login failed', err);
+        }
+      });
     }
-    this.loginForm.reset();
   }
 }
 

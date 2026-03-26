@@ -5,7 +5,7 @@ import { MatCard, MatCardContent, MatCardHeader, MatCardTitle } from '@angular/m
 import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { MatButton } from '@angular/material/button';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -95,7 +95,7 @@ export class RegisterComponent {
     services: new FormControl<string[]>([],),
 
   });
-  constructor(private authService: AuthService) {
+  constructor(private authService: AuthService, private router: Router) {
     this.registerForm.get('role')?.valueChanges.subscribe((role) => {
       const servicesControl = this.registerForm.get('services');
 
@@ -112,9 +112,15 @@ export class RegisterComponent {
 
   register() {
     if (this.registerForm.valid) {
-      this.authService.register(this.registerForm.value);
-      console.log('Register success');
-      this.registerForm.reset();
+      this.authService.register(this.registerForm.value).subscribe({
+        next: (response) => {
+          console.log('Registration successful', response);
+          this.router.navigate(['/login']); 
+        },
+        error: (err) => {
+          console.error('Registration failed', err);
+        }
+      });
     }
   }
 

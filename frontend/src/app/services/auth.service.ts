@@ -1,23 +1,20 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private users: any[] = [];
+  private apiUrl = 'http://localhost:5000/api/auth';
 
-  register(user: any) {
-    this.users.push(user);
-    localStorage.setItem('mockUsers', JSON.stringify(this.users));
-    console.log('Registered users:', this.users); // verify shape
+  constructor(private http: HttpClient) {}
+
+  register(user: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/register`, user);
   }
 
-  login(email: string, password: string) {
-    const stored = localStorage.getItem('mockUsers');
-    this.users = stored ? JSON.parse(stored) : [];
-    console.log('Attempting login against:', this.users); // verify
-    return this.users.find(
-      (u) => u.email.trim().toLowerCase() === email.trim().toLowerCase() && u.password === password,
-    );
+  login(email: string, password: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/login`, { email, password });
   }
 }
