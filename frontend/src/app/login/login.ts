@@ -40,7 +40,7 @@ export class LoginComponent {
       this.authService.login(this.loginForm.value.email!, this.loginForm.value.password!).subscribe({
         next: (response) => {
           console.log('Login successful', response);
-          // Navigate to a dashboard or home page
+          
           this.router.navigate(['/test']); 
         },
         error: (err) => {
