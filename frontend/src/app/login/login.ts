@@ -1,22 +1,27 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { FormGroup, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
-import { MatFormField, MatInput, MatLabel } from '@angular/material/input';
+import { MatFormField, MatInput, MatLabel, MatError } from '@angular/material/input';
 import { MatButton } from '@angular/material/button';
-import { RouterLink } from '@angular/router';
+import { MatIcon } from '@angular/material/icon';
+import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
   imports: [
+    CommonModule,
     ReactiveFormsModule,
     MatCard,
     MatCardTitle,
     MatCardContent,
-    MatFormField,
-    MatLabel,
+    MatFormFieldModule,
     MatInput,
     MatButton,
+    MatIcon,
     RouterLink,
   ],
   templateUrl: './login.html',
@@ -24,28 +29,32 @@ import { AuthService } from '../services/auth.service';
 })
 export class LoginComponent {
   loginForm = new FormGroup({
-    email: new FormControl('', [
-      Validators.required,
-      Validators.email]),
-
-    password: new FormControl('', [
-      Validators.required
-    ]),
+    email: new FormControl('', [Validators.required, Validators.email]),
+    password: new FormControl('', [Validators.required]),
   });
 
-  constructor(private authService: AuthService) {}
+  errorMessage = signal('');
+  loading = signal(false);
+
+  constructor(private authService: AuthService, private router: Router) {}
 
   login() {
-    const user = this.authService.login(
-      this.loginForm.value.email!,
-      this.loginForm.value.password!);
+    if (this.loginForm.invalid) return;
+    this.loading.set(true);
+    this.errorMessage.set('');
 
-    if (user) {
-      console.log('Login success');
-    } else {
-      console.log('Invalid login');
-    }
-    this.loginForm.reset();
+    this.authService.login(
+      this.loginForm.value.email!,
+      this.loginForm.value.password!
+    ).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.router.navigate(['/home']);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.errorMessage.set('Invalid email or password. Please try again.');
+      },
+    });
   }
 }
-

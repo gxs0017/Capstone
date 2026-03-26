@@ -5,5 +5,6 @@ import { Component } from '@angular/core';
   imports: [],
   templateUrl: './search.html',
   styleUrl: './search.css',
+    standalone: true
 })
 export class Search {}

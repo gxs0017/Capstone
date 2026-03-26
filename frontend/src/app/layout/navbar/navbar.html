@@ -1,32 +1,37 @@
 <mat-toolbar color="primary">
   <!-- App Title / Logo -->
-  <span routerLink="/home" style="cursor: pointer;">NeighbourBook</span>
+  <span routerLink="/home" class="nav-brand" style="cursor: pointer;">NeighbourBook</span>
 
   <span class="spacer"></span>
 
   <!-- Nav Links -->
-  <a mat-button routerLink="/services" routerLinkActive="active-link"> Search Services</a>
-  <a mat-button routerLink="/auth" routerLinkActive="active-link">Sign In</a>
+  <a mat-button routerLink="/search" routerLinkActive="active-link">Browse Services</a>
 
-  <!-- Actions Menu (dropdown) -->
-  <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
-    <mat-icon>account_circle</mat-icon>
-  </button>
+  @if (!authService.isLoggedIn()) {
+    <a mat-button routerLink="/login" routerLinkActive="active-link">Sign In</a>
+    <a mat-button routerLink="/register" routerLinkActive="active-link">Register</a>
+  }
 
-  <mat-menu #actionsMenu="matMenu">
-    <button mat-menu-item routerLink="/profile">
-      <mat-icon>person</mat-icon>
-      <span>Profile</span>
-    </button>
-    <button mat-menu-item routerLink="/settings">
-      <mat-icon>settings</mat-icon>
-      <span>Settings</span>
-    </button>
-    <mat-divider></mat-divider>
-    <button mat-menu-item (click)="logout()">
-      <mat-icon>logout</mat-icon>
-      <span>Logout</span>
-    </button>
-  </mat-menu>
+  @if (authService.isLoggedIn()) {
+    <!-- User info + Account Menu -->
+    <span class="user-greeting">
+      Hi, {{ authService.currentUser()?.firstName || 'User' }}
+    </span>
 
+    <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Account menu">
+      <mat-icon>account_circle</mat-icon>
+    </button>
+
+    <mat-menu #actionsMenu="matMenu">
+      <button mat-menu-item routerLink="/profile">
+        <mat-icon>person</mat-icon>
+        <span>My Profile</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+  }
 </mat-toolbar>
