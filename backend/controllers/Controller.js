@@ -29,13 +29,16 @@ const registerUser = async (req, res) => {
         await newUser.save();
 
         res.status(201).json({
+            message: 'User registered successfully!',
             token: 'dummy-token',
             user: {
                 id: newUser._id,
                 email: newUser.email,
                 role: newUser.role,
                 firstName: newUser.firstName,
-                lastName: newUser.lastName
+                lastName: newUser.lastName,
+                services: newUser.services,
+                address: newUser.address,
             }
         });
 
@@ -61,11 +64,13 @@ const loginUser = async (req, res) => {
         res.json({
             token: 'dummy-token',
             user: {
-                id: user.id,
+                id: user._id,
                 email: user.email,
                 role: user.role,
                 firstName: user.firstName,
-                lastName: user.lastName
+                lastName: user.lastName,
+                services: user.services,
+                address: user.address,
             }
         });
 
