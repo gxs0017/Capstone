@@ -103,6 +103,66 @@
   margin-right: 2px;
 }
 
-.chip-set {
-  margin-top: 8px;
+.services-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 8px;
+}
+
+/* Uber-style service tier rows */
+.service-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.service-tier {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+}
+
+.service-tier:hover {
+  background: var(--mat-sys-surface-container-highest, #efefef);
+}
+
+.tier-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--mat-sys-primary);
+  flex-shrink: 0;
+}
+
+.tier-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.tier-arrow {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.mock-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--mat-sys-tertiary-container, #fef3c7);
+  color: var(--mat-sys-on-tertiary-container, #92400e);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 20px;
 }

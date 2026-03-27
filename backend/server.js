@@ -1,33 +1,31 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
 const express = require('express');
-const cors = require('cors');
+const cors    = require('cors');
+const pool    = require('./config/db');
+const Routes  = require('./routes/Routes');
 
-const Routes = require('./routes/Routes');
+const app  = express();
+const PORT = process.env.PORT || 5000;
 
-const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log("MONGODB success");
-    })
-    .catch((error) => {
-        console.error("Error in Connection:", error);
-    });
-
+// Mount auth/provider routes
 app.use('/api/auth', Routes);
 
-app.get('/', (req, res) =>{
-    res.send('Welcome to Neighbourhood Help App Home Page');
+app.get('/', (req, res) => {
+    res.send('Neighbourhood Booking App — API running');
 });
 
-app.listen(5000, () => {
-    console.log("Server is Running perfectly on 5000");
-});
-
-// test data
-
-
-
+// Test MySQL connection on startup, then start listening
+pool.getConnection()
+    .then(conn => {
+        console.log('MySQL connected successfully');
+        conn.release();
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    })
+    .catch(err => {
+        console.error('MySQL connection failed:', err.message);
+        console.error('Make sure MySQL is running and .env credentials are correct.');
+        process.exit(1);
+    });

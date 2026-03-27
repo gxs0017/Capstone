@@ -1,5 +1,4 @@
 <div class="search-page">
-  <!-- Page Header -->
   <div class="search-header">
     <h1>Browse Services</h1>
     <p>Find trusted providers in your neighbourhood</p>
@@ -19,19 +18,24 @@
 
     <mat-form-field appearance="outline" class="filter-field">
       <mat-label>City</mat-label>
-      <input matInput [formControl]="cityFilter" placeholder="e.g. Brampton" />
+      <input matInput [formControl]="cityFilter" placeholder="e.g. Toronto" />
     </mat-form-field>
 
     <button mat-raised-button color="primary" (click)="loadProviders()">
       <mat-icon>search</mat-icon> Search
     </button>
-
     <button mat-stroked-button (click)="clearFilters()">
       <mat-icon>clear</mat-icon> Clear
     </button>
   </div>
 
-  <!-- Loading State -->
+  @if (usingMock()) {
+    <div class="mock-notice">
+      <mat-icon>info</mat-icon>
+      Backend unavailable — showing sample data for testing.
+    </div>
+  }
+
   @if (loading()) {
     <div class="state-center">
       <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
@@ -39,7 +43,6 @@
     </div>
   }
 
-  <!-- Results -->
   @if (!loading()) {
     @if (providers().length === 0) {
       <div class="state-center">
@@ -50,33 +53,44 @@
     } @else {
       <p class="results-count">{{ providers().length }} provider(s) found</p>
       <div class="providers-grid">
-        @for (provider of providers(); track provider._id) {
+        @for (provider of providers(); track provider.id) {
           <mat-card class="provider-card">
             <mat-card-content>
+
+              <!-- Provider Header -->
               <div class="provider-header">
                 <div class="provider-avatar">{{ getInitials(provider) }}</div>
                 <div>
                   <mat-card-title>{{ provider.firstName }} {{ provider.lastName }}</mat-card-title>
                   <mat-card-subtitle>
                     <mat-icon class="location-icon">location_on</mat-icon>
-                    {{ getCity(provider) }}, {{ getProvince(provider) }}
+                    {{ provider.city }}, {{ provider.province }}
                   </mat-card-subtitle>
                 </div>
               </div>
 
-              <mat-chip-set class="chip-set">
+              <!-- Service Tiers (Uber-style chips) -->
+              <p class="services-label">Available Services</p>
+              <div class="service-tiers">
                 @for (svc of provider.services; track svc) {
-                  <mat-chip>{{ svc }}</mat-chip>
+                  <div class="service-tier" (click)="bookNow(provider, svc)">
+                    <mat-icon class="tier-icon">{{
+                      svc === 'Snow Shovelling' ? 'ac_unit' :
+                      svc === 'Babysitting'     ? 'child_care' :
+                      svc === 'Tutoring'        ? 'school' :
+                      svc === 'Lawn Mowing'     ? 'yard' : 'handyman'
+                    }}</mat-icon>
+                    <span class="tier-name">{{ svc }}</span>
+                    <mat-icon class="tier-arrow">chevron_right</mat-icon>
+                  </div>
                 }
-              </mat-chip-set>
+              </div>
+
             </mat-card-content>
 
             <mat-card-actions align="end">
               <button mat-button color="primary">
                 <mat-icon>email</mat-icon> Contact
-              </button>
-              <button mat-raised-button color="primary">
-                Book Now
               </button>
             </mat-card-actions>
           </mat-card>
