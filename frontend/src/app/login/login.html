@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+<div class="container">
+  <mat-card>
+    <mat-card-title>Login</mat-card-title>
+    <mat-card-content>
+      <div style="display: inline">
+        <p>Don't have an account?</p>
+        <a routerLink="/register">Register Here</a>
+      </div>
+      <form [formGroup]="loginForm" (ngSubmit)="login()">
+        <div style="display: flex; flex-direction: column">
+          <!--Email-->
+          <mat-form-field appearance="outline">
+            <mat-label>Email: </mat-label>
+            <input type="email" matInput formControlName="email">
+          </mat-form-field>
+          <!--Password-->
+          <mat-form-field appearance="outline">
+            <mat-label>Password: </mat-label>
+            <input type="password" matInput formControlName="password">
+          </mat-form-field>
+          <button mat-raised-button color="primary" type="submit">Login</button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
+</body>
+</html>
