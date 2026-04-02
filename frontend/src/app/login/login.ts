@@ -40,6 +40,8 @@ export class LoginComponent {
       this.authService.login(this.loginForm.value.email!, this.loginForm.value.password!).subscribe({
         next: (response) => {
           console.log('Login successful', response);
+
+          localStorage.setItem('token', response.token);
           
           this.router.navigate(['/test']); 
         },
