@@ -1,0 +1,167 @@
+<div class="auth-wrapper">
+  <mat-card class="auth-card">
+    <mat-card-title>Create an Account</mat-card-title>
+    <mat-card-content>
+      <p class="auth-subtitle">Join your neighbourhood community</p>
+
+      @if (errorMessage()) {
+        <div class="message-banner error-banner">
+          <mat-icon>error_outline</mat-icon>
+          {{ errorMessage() }}
+        </div>
+      }
+      @if (successMessage()) {
+        <div class="message-banner success-banner">
+          <mat-icon>check_circle_outline</mat-icon>
+          {{ successMessage() }}
+        </div>
+      }
+
+      <form [formGroup]="registerForm" (ngSubmit)="register()">
+        <div class="form-fields">
+
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>First Name</mat-label>
+              <input matInput formControlName="firstName" />
+              @if (registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched) {
+                <mat-error>First name is required</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Last Name</mat-label>
+              <input matInput formControlName="lastName" />
+              @if (registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched) {
+                <mat-error>Last name is required</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Phone Number (10 digits)</mat-label>
+            <input matInput formControlName="phoneNumber" />
+            @if (registerForm.get('phoneNumber')?.hasError('required') && registerForm.get('phoneNumber')?.touched) {
+              <mat-error>Phone number is required</mat-error>
+            }
+            @if (registerForm.get('phoneNumber')?.hasError('pattern') && registerForm.get('phoneNumber')?.touched) {
+              <mat-error>Enter a valid 10-digit phone number</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date of Birth</mat-label>
+            <input type="date" matInput formControlName="dateOfBirth" />
+            @if (registerForm.get('dateOfBirth')?.invalid && registerForm.get('dateOfBirth')?.touched) {
+              <mat-error>Please enter a valid date of birth</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Email</mat-label>
+            <input type="email" matInput formControlName="email" autocomplete="email" />
+            @if (registerForm.get('email')?.hasError('required') && registerForm.get('email')?.touched) {
+              <mat-error>Email is required</mat-error>
+            }
+            @if (registerForm.get('email')?.hasError('email') && registerForm.get('email')?.touched) {
+              <mat-error>Enter a valid email address</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Password (min. 6 characters)</mat-label>
+            <input type="password" matInput formControlName="password" autocomplete="new-password" />
+            @if (registerForm.get('password')?.hasError('required') && registerForm.get('password')?.touched) {
+              <mat-error>Password is required</mat-error>
+            }
+            @if (registerForm.get('password')?.hasError('minlength') && registerForm.get('password')?.touched) {
+              <mat-error>Password must be at least 6 characters</mat-error>
+            }
+          </mat-form-field>
+
+          <!-- Address -->
+          <p class="section-label">Address</p>
+          <div formGroupName="addressForm" class="form-fields">
+            <mat-form-field appearance="outline">
+              <mat-label>Street</mat-label>
+              <input matInput formControlName="street" />
+              @if (registerForm.get('addressForm.street')?.invalid && registerForm.get('addressForm.street')?.touched) {
+                <mat-error>Street is required</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>City</mat-label>
+                <input matInput formControlName="city" />
+                @if (registerForm.get('addressForm.city')?.invalid && registerForm.get('addressForm.city')?.touched) {
+                  <mat-error>City is required</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Province</mat-label>
+                <mat-select formControlName="province">
+                  <mat-option value="ON">Ontario</mat-option>
+                  <mat-option value="BC">British Columbia</mat-option>
+                  <mat-option value="QC">Quebec</mat-option>
+                  <mat-option value="AB">Alberta</mat-option>
+                  <mat-option value="NS">Nova Scotia</mat-option>
+                  <mat-option value="NB">New Brunswick</mat-option>
+                  <mat-option value="MB">Manitoba</mat-option>
+                  <mat-option value="PE">Prince Edward Island</mat-option>
+                  <mat-option value="SK">Saskatchewan</mat-option>
+                  <mat-option value="NL">Newfoundland and Labrador</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Postal Code</mat-label>
+              <input matInput formControlName="postalCode" placeholder="A1B 2C3" />
+              @if (registerForm.get('addressForm.postalCode')?.hasError('required') && registerForm.get('addressForm.postalCode')?.touched) {
+                <mat-error>Postal code is required</mat-error>
+              }
+              @if (registerForm.get('addressForm.postalCode')?.hasError('pattern') && registerForm.get('addressForm.postalCode')?.touched) {
+                <mat-error>Enter a valid Canadian postal code (e.g. A1B 2C3)</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <!-- Role -->
+          <mat-form-field appearance="outline">
+            <mat-label>I want to...</mat-label>
+            <mat-select formControlName="role">
+              <mat-option [value]="Role.PROVIDER">Offer Services (Provider)</mat-option>
+              <mat-option [value]="Role.REQUESTER">Book Services (Requester)</mat-option>
+            </mat-select>
+            @if (registerForm.get('role')?.invalid && registerForm.get('role')?.touched) {
+              <mat-error>Please select a role</mat-error>
+            }
+          </mat-form-field>
+
+          @if (registerForm.get('role')?.value === 'PROVIDER') {
+            <mat-form-field appearance="outline">
+              <mat-label>Services I Offer</mat-label>
+              <mat-select formControlName="services" multiple>
+                @for (item of items; track item) {
+                  <mat-option [value]="item">{{ item }}</mat-option>
+                }
+              </mat-select>
+              @if (registerForm.get('services')?.invalid && registerForm.get('services')?.touched) {
+                <mat-error>Please select at least one service</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          <button mat-raised-button color="primary" type="submit" [disabled]="loading()">
+            @if (loading()) { Creating Account... } @else { Create Account }
+          </button>
+        </div>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a routerLink="/login">Sign in here</a></p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
