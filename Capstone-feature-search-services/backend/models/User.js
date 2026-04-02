@@ -63,7 +63,7 @@ const getProviders = async (serviceName, city) => {
             u.city,
             u.province,
             u.role,
-                        JSON_ARRAYAGG(s.service_name) AS services
+                     JSON_ARRAYAGG(s.service_name) AS services
         FROM users u
         JOIN provider_details pd ON u.user_id = pd.user_id
         JOIN services s ON pd.service_id = s.service_id
