@@ -54,7 +54,8 @@ const addProviderService = async (userId, serviceId) => {
 // Return all providers with their services joined as an array.
 // Supports optional filtering by service name and/or city.
 // Supports sorting via sort column and order direction (whitelist-validated).
-const getProviders = async (serviceName, city, sort = 'created_at', order = 'DESC') => {
+// Supports pagination via page and limit parameters.
+const getProviders = async (serviceName, city, sort = 'created_at', order = 'DESC', page = 1, limit = 10) => {
     // SECURITY: Whitelist of allowed columns for ORDER BY clause
     const ALLOWED_SORT_COLUMNS = ['first_name', 'city', 'created_at'];
     const ALLOWED_ORDERS = ['ASC', 'DESC'];
@@ -65,6 +66,43 @@ const getProviders = async (serviceName, city, sort = 'created_at', order = 'DES
     // Validate and sanitize order direction — default to 'DESC' if invalid
     const safeOrder = ALLOWED_ORDERS.includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
 
+    // Parse pagination parameters as integers, with defaults
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    
+    // Calculate OFFSET for MySQL pagination: (page - 1) * limit
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build base WHERE clause (reused for both data and count queries)
+    let whereClause = 'u.role = \'PROVIDER\'';
+    const params = [];
+
+    if (serviceName) {
+        whereClause += ' AND s.service_name = ?';
+        params.push(serviceName);
+    }
+    if (city) {
+        whereClause += ' AND u.city LIKE ?';
+        params.push(`%${city}%`);
+    }
+
+    // Query 1: Get total count of matching providers (for pagination metadata)
+    // Uses same WHERE filters but ignores LIMIT/OFFSET/ORDER BY
+    const countQuery = `
+        SELECT COUNT(DISTINCT u.user_id) AS totalRecords
+        FROM users u
+        JOIN provider_details pd ON u.user_id = pd.user_id
+        JOIN services s ON pd.service_id = s.service_id
+        WHERE ${whereClause}
+    `;
+    
+    const [countRows] = await pool.execute(countQuery, params);
+    const totalRecords = countRows[0].totalRecords || 0;
+
+    // Query 2: Get paginated provider data with sorting
+    const safeLimit = Number(limitNum) || 10;
+    const safeOffset = Number(offset) || 0;
+    
     let query = `
         SELECT
             u.user_id    AS id,
@@ -78,28 +116,34 @@ const getProviders = async (serviceName, city, sort = 'created_at', order = 'DES
         FROM users u
         JOIN provider_details pd ON u.user_id = pd.user_id
         JOIN services s ON pd.service_id = s.service_id
-        WHERE u.role = 'PROVIDER'
+        WHERE ${whereClause}
+        GROUP BY u.user_id 
+        ORDER BY ${safeSortColumn} ${safeOrder}
+        LIMIT ${safeLimit} OFFSET ${safeOffset}
     `;
-    const params = [];
 
-    if (serviceName) {
-        query += ' AND s.service_name = ?';
-        params.push(serviceName);
-    }
-    if (city) {
-        query += ' AND u.city LIKE ?';
-        params.push(`%${city}%`);
-    }
-
-    query += ' GROUP BY u.user_id ORDER BY ' + safeSortColumn + ' ' + safeOrder;
-
+    // params now ONLY contains the variables for the WHERE clause
     const [rows] = await pool.execute(query, params);
-    return rows.map(row => ({
+    
+    const providers = rows.map(row => ({
         ...row,
         services: typeof row.services === 'string'
             ? JSON.parse(row.services)
             : (row.services || []),
     }));
+
+    // Calculate totalPages using ceiling division
+    const totalPages = Math.ceil(totalRecords / limitNum);
+
+    return {
+        data: providers,
+        pagination: {
+            totalRecords,
+            currentPage: pageNum,
+            totalPages,
+            limit: limitNum
+        }
+    };
 };
 
 module.exports = { findByEmail, findById, createUser,

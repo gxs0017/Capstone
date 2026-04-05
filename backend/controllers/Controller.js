@@ -133,19 +133,22 @@ const loginUser = async (req, res) => {
 
 // ----------------------------------------------------------------
 // GET /api/auth/providers  (protected — requires valid JWT)
-// Query params: ?service=Snow+Shovelling&city=Toronto&sort=first_name&order=asc
-// Defaults: sort=created_at, order=DESC
+// Query params: ?service=Snow+Shovelling&city=Toronto&sort=first_name&order=asc&page=1&limit=10
+// Defaults: sort=created_at, order=DESC, page=1, limit=10
+// Response structure: { data: [...], pagination: { totalRecords, currentPage, totalPages, limit } }
 // ----------------------------------------------------------------
 const getProviders = async (req, res) => {
     try {
-        const { service, city, sort, order } = req.query;
-        const providers = await User.getProviders(
+        const { service, city, sort, order, page, limit } = req.query;
+        const result = await User.getProviders(
             service || null,
             city || null,
             sort || 'created_at',
-            order || 'DESC'
+            order || 'DESC',
+            Number(page) || 1,
+            Number(limit) || 10
         );
-        return res.json(providers);
+        return res.json(result);
     } catch (error) {
         console.error('Get providers error:', error);
         return res.status(500).json({ message: 'Error fetching providers.' });
