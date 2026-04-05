@@ -53,7 +53,18 @@ const addProviderService = async (userId, serviceId) => {
 
 // Return all providers with their services joined as an array.
 // Supports optional filtering by service name and/or city.
-const getProviders = async (serviceName, city) => {
+// Supports sorting via sort column and order direction (whitelist-validated).
+const getProviders = async (serviceName, city, sort = 'created_at', order = 'DESC') => {
+    // SECURITY: Whitelist of allowed columns for ORDER BY clause
+    const ALLOWED_SORT_COLUMNS = ['first_name', 'city', 'created_at'];
+    const ALLOWED_ORDERS = ['ASC', 'DESC'];
+
+    // Validate and sanitize sort column — default to 'created_at' if invalid
+    const safeSortColumn = ALLOWED_SORT_COLUMNS.includes(sort) ? sort : 'created_at';
+
+    // Validate and sanitize order direction — default to 'DESC' if invalid
+    const safeOrder = ALLOWED_ORDERS.includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
+
     let query = `
         SELECT
             u.user_id    AS id,
@@ -80,7 +91,7 @@ const getProviders = async (serviceName, city) => {
         params.push(`%${city}%`);
     }
 
-    query += ' GROUP BY u.user_id';
+    query += ' GROUP BY u.user_id ORDER BY ' + safeSortColumn + ' ' + safeOrder;
 
     const [rows] = await pool.execute(query, params);
     return rows.map(row => ({

@@ -133,12 +133,18 @@ const loginUser = async (req, res) => {
 
 // ----------------------------------------------------------------
 // GET /api/auth/providers  (protected — requires valid JWT)
-// Query params: ?service=Snow+Shovelling&city=Toronto
+// Query params: ?service=Snow+Shovelling&city=Toronto&sort=first_name&order=asc
+// Defaults: sort=created_at, order=DESC
 // ----------------------------------------------------------------
 const getProviders = async (req, res) => {
     try {
-        const { service, city } = req.query;
-        const providers = await User.getProviders(service || null, city || null);
+        const { service, city, sort, order } = req.query;
+        const providers = await User.getProviders(
+            service || null,
+            city || null,
+            sort || 'created_at',
+            order || 'DESC'
+        );
         return res.json(providers);
     } catch (error) {
         console.error('Get providers error:', error);

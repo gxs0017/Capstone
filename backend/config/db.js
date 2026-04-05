@@ -3,6 +3,8 @@
 // Using a pool (not a single connection) so concurrent requests
 // don't block each other and dropped connections are auto-retried.
 
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
