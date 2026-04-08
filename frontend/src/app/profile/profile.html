@@ -15,7 +15,7 @@
             <div class="avatar">{{ initials }}</div>
             <div>
               <h2 class="user-name">{{ user?.firstName }} {{ user?.lastName }}</h2>
-              <p class="user-role">{{ user?.role === 'PROVIDER' ? 'Service Provider' : 'Service Requester' }}</p>
+              <p class="user-role">{{ roleLabel }}</p>
               <p class="user-email">
                 <mat-icon class="inline-icon">email</mat-icon>
                 {{ user?.email }}
@@ -25,19 +25,108 @@
 
           <mat-divider class="divider"></mat-divider>
 
-          @if (user?.role === 'PROVIDER' && user?.services?.length) {
-            <div class="services-section">
-              <h3>Services Offered</h3>
-              <mat-chip-set>
-                @for (svc of user?.services; track svc) {
-                  <mat-chip>{{ svc }}</mat-chip>
-                }
-              </mat-chip-set>
-            </div>
+          <!-- User Details -->
+          <div class="details-grid">
+            @if (user?.phoneNumber) {
+              <div class="detail-item">
+                <mat-icon class="detail-icon">phone</mat-icon>
+                <div>
+                  <span class="detail-label">Phone</span>
+                  <span class="detail-value">{{ user?.phoneNumber }}</span>
+                </div>
+              </div>
+            }
+            @if (user?.city) {
+              <div class="detail-item">
+                <mat-icon class="detail-icon">location_on</mat-icon>
+                <div>
+                  <span class="detail-label">Location</span>
+                  <span class="detail-value">{{ user?.city }}, {{ user?.province }}</span>
+                </div>
+              </div>
+            }
+            @if (user?.createdAt) {
+              <div class="detail-item">
+                <mat-icon class="detail-icon">calendar_today</mat-icon>
+                <div>
+                  <span class="detail-label">Member since</span>
+                  <span class="detail-value">{{ user?.createdAt | date:'mediumDate' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Provider: Manage Services -->
+          @if (user?.role === 'PROVIDER') {
             <mat-divider class="divider"></mat-divider>
+            <div class="services-section">
+              <h3>
+                <mat-icon class="section-icon">build</mat-icon>
+                My Services
+              </h3>
+
+              @if (myServices().length === 0) {
+                <p class="empty-text">You haven't added any services yet.</p>
+              } @else {
+                <div class="service-list">
+                  @for (svc of myServices(); track svc.service_id) {
+                    <div class="service-row">
+                      <mat-icon class="service-item-icon">{{ getServiceIcon(svc.service_name) }}</mat-icon>
+                      <span class="service-name">{{ svc.service_name }}</span>
+                      <button mat-icon-button
+                              color="warn"
+                              matTooltip="Remove service"
+                              (click)="removeService(svc)"
+                              [disabled]="serviceLoading()">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Add Service -->
+              @if (addableServices().length > 0) {
+                <div class="add-service-row">
+                  <mat-form-field appearance="outline" class="add-service-field">
+                    <mat-label>Add a service</mat-label>
+                    <mat-select [formControl]="serviceToAdd">
+                      @for (svc of addableServices(); track svc.service_id) {
+                        <mat-option [value]="svc.service_id">{{ svc.service_name }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <button mat-raised-button color="primary"
+                          (click)="addService()"
+                          [disabled]="!serviceToAdd.value || serviceLoading()">
+                    <mat-icon>add</mat-icon> Add
+                  </button>
+                </div>
+              }
+
+              @if (serviceMessage()) {
+                <p class="service-message">{{ serviceMessage() }}</p>
+              }
+
+              @if (serviceLoading()) {
+                <mat-progress-spinner mode="indeterminate" diameter="24" class="inline-spinner"></mat-progress-spinner>
+              }
+            </div>
           }
 
+          <mat-divider class="divider"></mat-divider>
+
           <div class="actions">
+            @if (user?.role === 'REQUESTER' || user?.role === 'PROVIDER') {
+              <a mat-stroked-button routerLink="/my-bookings">
+                <mat-icon>event_note</mat-icon> My Bookings
+              </a>
+            }
+            @if (user?.role === 'PROVIDER') {
+              <a mat-stroked-button routerLink="/requests">
+                <mat-icon>inbox</mat-icon> Incoming Requests
+              </a>
+            }
             <button mat-stroked-button color="warn" (click)="logout()">
               <mat-icon>logout</mat-icon> Sign Out
             </button>

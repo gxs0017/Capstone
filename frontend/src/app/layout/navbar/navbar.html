@@ -7,6 +7,21 @@
   <!-- Nav Links -->
   <a mat-button routerLink="/search" routerLinkActive="active-link">Browse Services</a>
 
+  @if (authService.isLoggedIn() && !authService.isAdmin()) {
+    <a mat-button routerLink="/my-bookings" routerLinkActive="active-link">My Bookings</a>
+  }
+
+  @if (authService.isLoggedIn() && authService.isProvider()) {
+    <a mat-button routerLink="/requests" routerLinkActive="active-link">Requests</a>
+  }
+
+  @if (authService.isLoggedIn() && authService.isAdmin()) {
+    <a mat-button routerLink="/admin" routerLinkActive="active-link">
+      <mat-icon class="nav-icon">admin_panel_settings</mat-icon>
+      Admin
+    </a>
+  }
+
   @if (!authService.isLoggedIn()) {
     <a mat-button routerLink="/login" routerLinkActive="active-link">Sign In</a>
     <a mat-button routerLink="/register" routerLinkActive="active-link">Register</a>
@@ -18,6 +33,8 @@
       Hi, {{ authService.currentUser()?.firstName || 'User' }}
     </span>
 
+    <span class="role-chip">{{ authService.role }}</span>
+
     <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Account menu">
       <mat-icon>account_circle</mat-icon>
     </button>
@@ -27,6 +44,24 @@
         <mat-icon>person</mat-icon>
         <span>My Profile</span>
       </button>
+      @if (authService.isRequester() || authService.isProvider()) {
+        <button mat-menu-item routerLink="/my-bookings">
+          <mat-icon>event_note</mat-icon>
+          <span>My Bookings</span>
+        </button>
+      }
+      @if (authService.isProvider()) {
+        <button mat-menu-item routerLink="/requests">
+          <mat-icon>inbox</mat-icon>
+          <span>Requests</span>
+        </button>
+      }
+      @if (authService.isAdmin()) {
+        <button mat-menu-item routerLink="/admin">
+          <mat-icon>admin_panel_settings</mat-icon>
+          <span>Admin Dashboard</span>
+        </button>
+      }
       <mat-divider></mat-divider>
       <button mat-menu-item (click)="logout()">
         <mat-icon>logout</mat-icon>

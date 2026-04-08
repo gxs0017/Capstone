@@ -53,12 +53,6 @@
   opacity: 0.4;
 }
 
-.results-count {
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.9rem;
-  margin: 0 0 20px;
-}
-
 .providers-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -153,6 +147,120 @@
   width: 18px;
   height: 18px;
   color: var(--mat-sys-on-surface-variant);
+}
+
+/* Sort bar */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.sort-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface-variant);
+  white-space: nowrap;
+}
+
+.sort-chip {
+  font-size: 0.78rem !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  padding: 0 10px !important;
+}
+
+.sort-chip mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  margin-right: 3px;
+}
+
+.sort-chip--active {
+  background: var(--mat-sys-primary-container, #dbeafe) !important;
+  color: var(--mat-sys-on-primary-container, #1d4ed8) !important;
+  border-color: var(--mat-sys-primary, #1d4ed8) !important;
+}
+
+/* Results bar */
+.results-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.results-count {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.page-btn {
+  min-width: 36px !important;
+  width: 36px;
+  height: 36px !important;
+  padding: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: 36px !important;
+}
+
+.page-btn--active {
+  background: var(--mat-sys-primary, #1d4ed8) !important;
+  color: #fff !important;
+  border-color: var(--mat-sys-primary, #1d4ed8) !important;
+}
+
+.page-ellipsis {
+  color: var(--mat-sys-on-surface-variant);
+  padding: 0 4px;
+  line-height: 36px;
+  font-size: 0.9rem;
+}
+
+/* Sort arrow icon next to label */
+.sort-arrow {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+}
+
+/* Contact details panel inside provider card */
+.contact-details {
+  padding: 8px 16px 12px;
+  background: var(--mat-sys-surface-container-low, #f8f9fa);
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.contact-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--mat-sys-primary);
 }
 
 .mock-notice {

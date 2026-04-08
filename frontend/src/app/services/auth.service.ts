@@ -10,7 +10,15 @@ export interface UserProfile {
   lastName: string;
   email: string;
   role: string;
+  city?: string;
+  province?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  street?: string;
+  postalCode?: string;
+  isBlocked?: boolean;
   services?: string[];
+  createdAt?: string;
 }
 
 @Injectable({
@@ -46,6 +54,16 @@ export class AuthService {
     );
   }
 
+  /** Fetch fresh profile from backend and update local state */
+  refreshProfile(): Observable<UserProfile> {
+    return this.http.get<UserProfile>(`${this.API}/profile`).pipe(
+      tap((user) => {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+        this.currentUser.set(user);
+      })
+    );
+  }
+
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
@@ -56,6 +74,23 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  /** Role helpers for templates and guards */
+  get role(): string {
+    return this.currentUser()?.role ?? '';
+  }
+
+  isAdmin(): boolean {
+    return this.role === 'ADMIN';
+  }
+
+  isProvider(): boolean {
+    return this.role === 'PROVIDER';
+  }
+
+  isRequester(): boolean {
+    return this.role === 'REQUESTER';
   }
 
   private hasToken(): boolean {

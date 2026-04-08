@@ -1,0 +1,195 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <h1>Admin Dashboard</h1>
+    <p>Manage users, view stats, and oversee the platform</p>
+  </div>
+
+  <!-- Stats Cards -->
+  @if (stats()) {
+    <div class="stats-grid">
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <mat-icon class="stat-icon">people</mat-icon>
+          <div class="stat-value">{{ stats()!.totalUsers }}</div>
+          <div class="stat-label">Total Users</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <mat-icon class="stat-icon">engineering</mat-icon>
+          <div class="stat-value">{{ stats()!.totalProviders }}</div>
+          <div class="stat-label">Providers</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <mat-icon class="stat-icon">person_search</mat-icon>
+          <div class="stat-value">{{ stats()!.totalRequesters }}</div>
+          <div class="stat-label">Requesters</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <mat-icon class="stat-icon">event_note</mat-icon>
+          <div class="stat-value">{{ stats()!.totalBookings }}</div>
+          <div class="stat-label">Bookings</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <mat-icon class="stat-icon warn-icon">pending_actions</mat-icon>
+          <div class="stat-value">{{ stats()!.pendingBookings }}</div>
+          <div class="stat-label">Pending</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <mat-icon class="stat-icon error-icon">block</mat-icon>
+          <div class="stat-value">{{ stats()!.blockedUsers }}</div>
+          <div class="stat-label">Blocked</div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+
+  <mat-divider class="section-divider"></mat-divider>
+
+  <!-- User Management -->
+  <h2 class="section-title">User Management</h2>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Filter by Role</mat-label>
+      <mat-select [formControl]="roleFilter">
+        <mat-option value="">All Roles</mat-option>
+        <mat-option value="PROVIDER">Provider</mat-option>
+        <mat-option value="REQUESTER">Requester</mat-option>
+        <mat-option value="ADMIN">Admin</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Search by name or email</mat-label>
+      <input matInput [formControl]="searchFilter" placeholder="e.g. Marcus" />
+    </mat-form-field>
+
+    <button mat-stroked-button (click)="clearFilters()">
+      <mat-icon>clear</mat-icon> Clear
+    </button>
+  </div>
+
+  <!-- Action message / error -->
+  @if (actionMessage()) {
+    <div class="action-message">
+      <mat-icon>warning</mat-icon>
+      {{ actionMessage() }}
+    </div>
+  }
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="state-center">
+      <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+      <p>Loading users...</p>
+    </div>
+  }
+
+  <!-- User Table -->
+  @if (!loading()) {
+    @if (users().length === 0) {
+      <div class="state-center">
+        <mat-icon class="empty-icon">person_off</mat-icon>
+        <h3>No users found</h3>
+      </div>
+    } @else {
+      <div class="users-list">
+        @for (user of users(); track user.id) {
+          <mat-card class="user-card" [class.user-blocked]="user.isBlocked">
+            <mat-card-content class="user-row">
+              <div class="user-avatar" [class.avatar-blocked]="user.isBlocked">
+                {{ getInitials(user) }}
+              </div>
+
+              <div class="user-info">
+                <div class="user-name">
+                  {{ user.firstName }} {{ user.lastName }}
+                  @if (user.isBlocked) {
+                    <span class="blocked-badge">BLOCKED</span>
+                  }
+                </div>
+                <div class="user-email">{{ user.email }}</div>
+                <div class="user-meta">
+                  {{ user.city }}, {{ user.province }}
+                </div>
+              </div>
+
+              <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
+                {{ user.role }}
+              </span>
+
+              <div class="user-actions">
+                @if (actionLoading() === user.id) {
+                  <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                } @else {
+                  <button mat-icon-button
+                          [matTooltip]="user.isBlocked ? 'Unblock user' : 'Block user'"
+                          (click)="toggleBlock(user)"
+                          [color]="user.isBlocked ? 'primary' : 'warn'">
+                    <mat-icon>{{ user.isBlocked ? 'lock_open' : 'block' }}</mat-icon>
+                  </button>
+                  <button mat-icon-button
+                          matTooltip="Delete user"
+                          color="warn"
+                          (click)="deleteUser(user)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button mat-icon-button [disabled]="currentPage() === 1" (click)="prevPage()"
+                  matTooltip="Previous page">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+
+          @if (pageNumbers[0] > 1) {
+            <button mat-stroked-button class="page-btn" (click)="goToPage(1)">1</button>
+            @if (pageNumbers[0] > 2) {
+              <span class="page-ellipsis">…</span>
+            }
+          }
+
+          @for (n of pageNumbers; track n) {
+            <button mat-stroked-button
+                    class="page-btn"
+                    [class.page-btn--active]="n === currentPage()"
+                    (click)="goToPage(n)">
+              {{ n }}
+            </button>
+          }
+
+          @if (pageNumbers[pageNumbers.length - 1] < totalPages()) {
+            @if (pageNumbers[pageNumbers.length - 1] < totalPages() - 1) {
+              <span class="page-ellipsis">…</span>
+            }
+            <button mat-stroked-button class="page-btn" (click)="goToPage(totalPages())">
+              {{ totalPages() }}
+            </button>
+          }
+
+          <button mat-icon-button [disabled]="currentPage() === totalPages()" (click)="nextPage()"
+                  matTooltip="Next page">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      }
+    }
+  }
+</div>

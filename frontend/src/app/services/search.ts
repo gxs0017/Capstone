@@ -8,53 +8,108 @@ export interface Provider {
   firstName: string;
   lastName: string;
   email: string;
+  phoneNumber?: string;
   role: string;
   city: string;
   province: string;
   services: string[];
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+// Paginated response envelope returned by GET /api/auth/providers
+export interface ProviderPage {
+  data:       Provider[];
+  total:      number;
+  page:       number;
+  limit:      number;
+  totalPages: number;
+}
+
+// Sort types mirror the backend whitelist in models/User.js
+export type SortColumn = 'first_name' | 'city' | 'created_at';
+export type SortOrder  = 'ASC' | 'DESC';
+
+@Injectable({ providedIn: 'root' })
 export class SearchService {
   private readonly API = 'http://localhost:5000/api/auth';
 
-  // Mock data used as fallback when backend is unreachable
+  // Mock data — fallback when the backend is unreachable
   private readonly MOCK_PROVIDERS: Provider[] = [
-    { id: 1, firstName: 'Marcus', lastName: 'Houston', email: 'marcus@test.com',
-      role: 'PROVIDER', city: 'Calgary', province: 'AB',
-      services: ['Snow Shovelling', 'Lawn Mowing'] },
-    { id: 2, firstName: 'Emily', lastName: 'Brown', email: 'emily@test.com',
-      role: 'PROVIDER', city: 'Toronto', province: 'ON',
-      services: ['Babysitting', 'Tutoring'] },
-    { id: 3, firstName: 'Priya', lastName: 'Nair', email: 'priya@test.com',
-      role: 'PROVIDER', city: 'Brampton', province: 'ON',
-      services: ['Tutoring'] },
-    { id: 4, firstName: 'Daniel', lastName: 'Brooks', email: 'daniel@test.com',
-      role: 'PROVIDER', city: 'Mississauga', province: 'ON',
-      services: ['Lawn Mowing', 'Snow Shovelling'] },
+    { id: 1, firstName: 'Marcus',  lastName: 'Houston', email: 'marcus@test.com',
+      role: 'PROVIDER', city: 'Calgary',     province: 'AB', services: ['Lawn Mowing', 'Snow Shovelling'] },
+    { id: 2, firstName: 'Emily',   lastName: 'Brown',   email: 'emily@test.com',
+      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Babysitting', 'Tutoring'] },
+    { id: 3, firstName: 'Priya',   lastName: 'Nair',    email: 'priya@test.com',
+      role: 'PROVIDER', city: 'Brampton',    province: 'ON', services: ['Tutoring'] },
+    { id: 4, firstName: 'Daniel',  lastName: 'Brooks',  email: 'daniel@test.com',
+      role: 'PROVIDER', city: 'Mississauga', province: 'ON', services: ['Lawn Mowing', 'Snow Shovelling'] },
+    { id: 5, firstName: 'Aisha',   lastName: 'Malik',   email: 'aisha@test.com',
+      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Babysitting'] },
+    { id: 6, firstName: 'Jordan',  lastName: 'Lee',     email: 'jordan@test.com',
+      role: 'PROVIDER', city: 'Ottawa',      province: 'ON', services: ['Snow Shovelling', 'Lawn Mowing'] },
+    { id: 7, firstName: 'Sophie',  lastName: 'Tremblay',email: 'sophie@test.com',
+      role: 'PROVIDER', city: 'Montreal',    province: 'QC', services: ['Tutoring', 'Babysitting'] },
   ];
 
   constructor(private http: HttpClient) {}
 
-  getProviders(service?: string, city?: string): Observable<Provider[]> {
-    let params = new HttpParams();
+  getProviders(
+    service?: string,
+    city?:    string,
+    sort:     SortColumn = 'created_at',
+    order:    SortOrder  = 'DESC',
+    page:     number     = 1,
+    limit:    number     = 6
+  ): Observable<ProviderPage> {
+    let params = new HttpParams()
+      .set('sort',  sort)
+      .set('order', order)
+      .set('page',  String(page))
+      .set('limit', String(limit));
+
     if (service) params = params.set('service', service);
-    if (city)    params = params.set('city', city);
+    if (city)    params = params.set('city',    city);
 
     return this.http
-      .get<Provider[]>(`${this.API}/providers`, { params })
+      .get<ProviderPage>(`${this.API}/providers`, { params })
       .pipe(
-        catchError(() => of(this.filterMock(service, city)))
+        catchError(() => of(this.mockPage(service, city, sort, order, page, limit)))
       );
   }
 
-  private filterMock(service?: string, city?: string): Provider[] {
-    return this.MOCK_PROVIDERS.filter(p => {
+  // Build a ProviderPage from mock data so the pagination UI works offline
+  private mockPage(
+    service?: string,
+    city?:    string,
+    sort:     SortColumn = 'created_at',
+    order:    SortOrder  = 'DESC',
+    page:     number     = 1,
+    limit:    number     = 6
+  ): ProviderPage {
+    let results = this.MOCK_PROVIDERS.filter(p => {
       if (service && !p.services.includes(service)) return false;
-      if (city && !p.city.toLowerCase().includes(city.toLowerCase())) return false;
+      if (city    && !p.city.toLowerCase().includes(city.toLowerCase())) return false;
       return true;
     });
+
+    // Sort
+    results = [...results].sort((a, b) => {
+      const valA = sort === 'first_name' ? a.firstName : sort === 'city' ? a.city : String(a.id);
+      const valB = sort === 'first_name' ? b.firstName : sort === 'city' ? b.city : String(b.id);
+      return valA.localeCompare(valB);
+    });
+    if (order === 'DESC') results.reverse();
+
+    const total      = results.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage   = Math.min(page, totalPages);
+    const offset     = (safePage - 1) * limit;
+
+    return {
+      data:  results.slice(offset, offset + limit),
+      total,
+      page:  safePage,
+      limit,
+      totalPages,
+    };
   }
 }

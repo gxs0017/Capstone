@@ -4,7 +4,8 @@
 
 const pool = require('../config/db');
 
-// Find a single user by email (used for login + duplicate check)
+// ── Basic user queries ────────────────────────────────────────────────────────
+
 const findByEmail = async (email) => {
     const [rows] = await pool.execute(
         'SELECT * FROM users WHERE email = ?', [email]
@@ -12,7 +13,6 @@ const findByEmail = async (email) => {
     return rows[0] || null;
 };
 
-// Find a single user by ID
 const findById = async (userId) => {
     const [rows] = await pool.execute(
         'SELECT * FROM users WHERE user_id = ?', [userId]
@@ -20,7 +20,6 @@ const findById = async (userId) => {
     return rows[0] || null;
 };
 
-// Insert a new user; returns the new user_id
 const createUser = async ({ firstName, lastName, phoneNumber, dateOfBirth,
                              email, hashedPassword, street, city, province,
                              postalCode, role }) => {
@@ -35,7 +34,8 @@ const createUser = async ({ firstName, lastName, phoneNumber, dateOfBirth,
     return result.insertId;
 };
 
-// Look up a service_id by name
+// ── Service helpers ───────────────────────────────────────────────────────────
+
 const findServiceByName = async (serviceName) => {
     const [rows] = await pool.execute(
         'SELECT service_id FROM services WHERE service_name = ?', [serviceName]
@@ -43,7 +43,6 @@ const findServiceByName = async (serviceName) => {
     return rows[0] || null;
 };
 
-// Link a provider to a service (INSERT IGNORE avoids duplicate errors)
 const addProviderService = async (userId, serviceId) => {
     await pool.execute(
         'INSERT IGNORE INTO provider_details (user_id, service_id) VALUES (?, ?)',
@@ -51,21 +50,69 @@ const addProviderService = async (userId, serviceId) => {
     );
 };
 
-// Return all providers with their services joined as an array.
-// Supports optional filtering by service name and/or city.
-// Supports sorting via sort column and order direction (whitelist-validated).
-const getProviders = async (serviceName, city, sort = 'created_at', order = 'DESC') => {
-    // SECURITY: Whitelist of allowed columns for ORDER BY clause
+// ── Provider search with filtering, sorting, and pagination ───────────────────
+//
+// Returns:
+//   { data: Provider[], total: number, page: number, limit: number, totalPages: number }
+//
+// Query params (all optional):
+//   serviceName  – filter by exact service name
+//   city         – filter by city substring
+//   sort         – 'first_name' | 'city' | 'created_at'  (default: 'created_at')
+//   order        – 'ASC' | 'DESC'                         (default: 'DESC')
+//   page         – 1-indexed page number                  (default: 1)
+//   limit        – results per page, max 50               (default: 6)
+
+const getProviders = async (
+    serviceName,
+    city,
+    sort  = 'created_at',
+    order = 'DESC',
+    page  = 1,
+    limit = 6
+) => {
+    // ── Security: whitelist sort column and order ─────────────────────────────
     const ALLOWED_SORT_COLUMNS = ['first_name', 'city', 'created_at'];
-    const ALLOWED_ORDERS = ['ASC', 'DESC'];
+    const ALLOWED_ORDERS       = ['ASC', 'DESC'];
 
-    // Validate and sanitize sort column — default to 'created_at' if invalid
-    const safeSortColumn = ALLOWED_SORT_COLUMNS.includes(sort) ? sort : 'created_at';
+    const safeSortColumn = ALLOWED_SORT_COLUMNS.includes(sort)           ? sort           : 'created_at';
+    const safeOrder      = ALLOWED_ORDERS.includes(order.toUpperCase())  ? order.toUpperCase() : 'DESC';
 
-    // Validate and sanitize order direction — default to 'DESC' if invalid
-    const safeOrder = ALLOWED_ORDERS.includes(order.toUpperCase()) ? order.toUpperCase() : 'DESC';
+    // ── Sanitise pagination values ────────────────────────────────────────────
+    const safePage  = Math.max(1, parseInt(page,  10) || 1);
+    const safeLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 6));
+    const offset    = (safePage - 1) * safeLimit;
 
-    let query = `
+    // ── Build shared WHERE conditions and params ───────────────────────────────
+    // Both the COUNT query and the data query use the same filters.
+    let whereExtra = '';
+    const filterParams = [];
+
+    if (serviceName) {
+        whereExtra += ' AND s.service_name = ?';
+        filterParams.push(serviceName);
+    }
+    if (city) {
+        whereExtra += ' AND u.city LIKE ?';
+        filterParams.push(`%${city}%`);
+    }
+
+    // ── COUNT query — how many distinct providers match the filters ───────────
+    const countQuery = `
+        SELECT COUNT(DISTINCT u.user_id) AS total
+        FROM users u
+        JOIN provider_details pd ON u.user_id = pd.user_id
+        JOIN services s ON pd.service_id = s.service_id
+        WHERE u.role = 'PROVIDER'
+        ${whereExtra}
+    `;
+    const [[{ total }]] = await pool.execute(countQuery, filterParams);
+
+    // ── Data query — paginated, sorted ───────────────────────────────────────
+    // LIMIT and OFFSET must be integers; pool.execute() with placeholders
+    // sometimes coerces them to strings, so we interpolate them directly
+    // after validating they are safe integers above.
+    const dataQuery = `
         SELECT
             u.user_id    AS id,
             u.first_name AS firstName,
@@ -74,33 +121,48 @@ const getProviders = async (serviceName, city, sort = 'created_at', order = 'DES
             u.city,
             u.province,
             u.role,
-                     JSON_ARRAYAGG(s.service_name) AS services
+            JSON_ARRAYAGG(s.service_name ORDER BY s.service_name) AS services
         FROM users u
         JOIN provider_details pd ON u.user_id = pd.user_id
         JOIN services s ON pd.service_id = s.service_id
         WHERE u.role = 'PROVIDER'
+        ${whereExtra}
+        GROUP BY u.user_id
+        ORDER BY u.${safeSortColumn} ${safeOrder}
+        LIMIT ${safeLimit} OFFSET ${offset}
     `;
-    const params = [];
+    const [rows] = await pool.execute(dataQuery, filterParams);
 
-    if (serviceName) {
-        query += ' AND s.service_name = ?';
-        params.push(serviceName);
-    }
-    if (city) {
-        query += ' AND u.city LIKE ?';
-        params.push(`%${city}%`);
-    }
-
-    query += ' GROUP BY u.user_id ORDER BY ' + safeSortColumn + ' ' + safeOrder;
-
-    const [rows] = await pool.execute(query, params);
-    return rows.map(row => ({
+    const data = rows.map(row => ({
         ...row,
         services: typeof row.services === 'string'
             ? JSON.parse(row.services)
             : (row.services || []),
     }));
+
+    return {
+        data,
+        total,
+        page:       safePage,
+        limit:      safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
+    };
+};
+
+// ── Get service names for a given user ───────────────────────────────────────
+
+const getServicesByUserId = async (userId) => {
+    const [rows] = await pool.execute(
+        `SELECT s.service_name
+         FROM provider_details pd
+         JOIN services s ON pd.service_id = s.service_id
+         WHERE pd.user_id = ?
+         ORDER BY s.service_name`,
+        [userId]
+    );
+    return rows.map(r => r.service_name);
 };
 
 module.exports = { findByEmail, findById, createUser,
-                   findServiceByName, addProviderService, getProviders };
+                   findServiceByName, addProviderService, getProviders,
+                   getServicesByUserId };

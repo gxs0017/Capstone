@@ -47,13 +47,21 @@ export class LoginComponent {
       this.loginForm.value.email!,
       this.loginForm.value.password!
     ).subscribe({
-      next: () => {
+      next: (res: any) => {
         this.loading.set(false);
-        this.router.navigate(['/home']);
+        // Route based on role
+        const role = res?.user?.role;
+        if (role === 'ADMIN') {
+          this.router.navigate(['/admin']);
+        } else {
+          this.router.navigate(['/home']);
+        }
       },
-      error: () => {
+      error: (err) => {
         this.loading.set(false);
-        this.errorMessage.set('Invalid email or password. Please try again.');
+        this.errorMessage.set(
+          err?.error?.message || 'Invalid email or password. Please try again.'
+        );
       },
     });
   }

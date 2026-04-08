@@ -6,72 +6,155 @@
       <mat-icon>arrow_back</mat-icon> Back to Search
     </button>
 
-    <!-- Page heading -->
-    <div class="booking-header">
-      <h1>Review & Confirm</h1>
-      <p>You're about to request the following service</p>
-    </div>
+    @if (!confirmed()) {
+      <!-- Page heading -->
+      <div class="booking-header">
+        <h1>Review & Confirm</h1>
+        <p>You're about to request the following service</p>
+      </div>
 
-    <!-- Service summary card -->
-    <mat-card class="summary-card">
-      <mat-card-content>
+      @if (errorMsg()) {
+        <div class="error-banner">
+          <mat-icon>error_outline</mat-icon>
+          {{ errorMsg() }}
+        </div>
+      }
 
-        <!-- Service highlight -->
-        <div class="service-highlight">
-          <mat-icon class="service-icon-large">{{ getServiceIcon(service()) }}</mat-icon>
-          <div>
-            <p class="service-label">Requested Service</p>
-            <h2 class="service-name">{{ service() }}</h2>
+      <!-- Service summary card -->
+      <mat-card class="summary-card">
+        <mat-card-content>
+
+          <!-- Service highlight -->
+          <div class="service-highlight">
+            <mat-icon class="service-icon-large">{{ getServiceIcon(service()) }}</mat-icon>
+            <div>
+              <p class="service-label">Requested Service</p>
+              <h2 class="service-name">{{ service() }}</h2>
+            </div>
           </div>
-        </div>
 
-        <mat-divider class="divider"></mat-divider>
+          <mat-divider class="divider"></mat-divider>
 
-        <!-- Provider info -->
-        <p class="section-label">Provider</p>
-        <div class="provider-row">
-          <div class="provider-avatar">{{ getInitials(provider()!) }}</div>
-          <div>
-            <p class="provider-name">{{ provider()!.firstName }} {{ provider()!.lastName }}</p>
-            <p class="provider-location">
-              <mat-icon class="location-icon">location_on</mat-icon>
-              {{ provider()!.city }}, {{ provider()!.province }}
-            </p>
+          <!-- Provider info -->
+          <p class="section-label">Provider</p>
+          <div class="provider-row">
+            <div class="provider-avatar">{{ getInitials(provider()!) }}</div>
+            <div>
+              <p class="provider-name">{{ provider()!.firstName }} {{ provider()!.lastName }}</p>
+              <p class="provider-location">
+                <mat-icon class="location-icon">location_on</mat-icon>
+                {{ provider()!.city }}, {{ provider()!.province }}
+              </p>
+            </div>
           </div>
-        </div>
 
-        <mat-divider class="divider"></mat-divider>
+          <mat-divider class="divider"></mat-divider>
 
-        <!-- Booking reference -->
-        <div class="reference-row">
-          <mat-icon class="ref-icon">confirmation_number</mat-icon>
-          <div>
-            <p class="ref-label">Booking Reference</p>
-            <p class="ref-number">{{ bookingRef }}</p>
+          <!-- Booking details form -->
+          <p class="section-label">Booking Details</p>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Preferred Date</mat-label>
+            <input type="date" matInput [formControl]="scheduledDate" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Notes for the provider</mat-label>
+            <textarea matInput [formControl]="notes" rows="3"
+                      placeholder="e.g. Front driveway, 2 hours needed"></textarea>
+          </mat-form-field>
+
+          <mat-divider class="divider"></mat-divider>
+
+          <!-- Payment Method -->
+          <p class="section-label">Payment Method</p>
+          <div class="payment-options">
+            <mat-radio-group [formControl]="paymentMethod">
+              <mat-radio-button value="pay_on_arrival" class="payment-radio">
+                <div class="payment-option">
+                  <mat-icon class="payment-icon">payments</mat-icon>
+                  <div>
+                    <span class="payment-title">Pay on Arrival</span>
+                    <span class="payment-desc">Pay the provider in person when they arrive</span>
+                  </div>
+                </div>
+              </mat-radio-button>
+              <mat-radio-button value="online" class="payment-radio" disabled>
+                <div class="payment-option">
+                  <mat-icon class="payment-icon">credit_card</mat-icon>
+                  <div>
+                    <span class="payment-title">Pay Online</span>
+                    <span class="payment-desc">Coming soon — Stripe / PayPal integration</span>
+                  </div>
+                </div>
+              </mat-radio-button>
+            </mat-radio-group>
           </div>
-        </div>
 
-        <!-- Status badge -->
-        <div class="status-badge">
-          <mat-icon>pending</mat-icon>
-          Pending Confirmation
-        </div>
+        </mat-card-content>
 
-      </mat-card-content>
+        <mat-card-actions align="end" class="card-actions">
+          <button mat-stroked-button (click)="goBack()">Cancel</button>
+          <button mat-raised-button color="primary"
+                  (click)="confirmBooking()"
+                  [disabled]="loading()">
+            @if (loading()) {
+              <mat-progress-spinner mode="indeterminate" diameter="20" class="btn-spinner"></mat-progress-spinner>
+              Booking...
+            } @else {
+              <mat-icon>check_circle</mat-icon> Confirm Booking
+            }
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    }
 
-      <mat-card-actions align="end" class="card-actions">
-        <button mat-stroked-button (click)="goBack()">Cancel</button>
-        <button mat-raised-button color="primary" (click)="confirmBooking()">
-          <mat-icon>check_circle</mat-icon> Confirm Booking
-        </button>
-      </mat-card-actions>
-    </mat-card>
+    <!-- Confirmation view -->
+    @if (confirmed()) {
+      <div class="confirmation">
+        <mat-card class="confirmation-card">
+          <mat-card-content>
+            <mat-icon class="confirm-icon">check_circle</mat-icon>
+            <h2>Booking Submitted!</h2>
+            <p class="confirm-subtitle">Your booking request has been sent to the provider.</p>
 
-    <!-- Info notice -->
-    <div class="mock-notice">
-      <mat-icon>info</mat-icon>
-      This is a preview — payment and scheduling will be added in a future update.
-    </div>
+            <div class="confirm-details">
+              <div class="confirm-row">
+                <span class="confirm-label">Reference</span>
+                <span class="confirm-value ref-number">{{ bookingRef() }}</span>
+              </div>
+              <div class="confirm-row">
+                <span class="confirm-label">Service</span>
+                <span class="confirm-value">{{ service() }}</span>
+              </div>
+              <div class="confirm-row">
+                <span class="confirm-label">Provider</span>
+                <span class="confirm-value">{{ provider()!.firstName }} {{ provider()!.lastName }}</span>
+              </div>
+              <div class="confirm-row">
+                <span class="confirm-label">Payment</span>
+                <span class="confirm-value">Pay on Arrival</span>
+              </div>
+              <div class="confirm-row">
+                <span class="confirm-label">Status</span>
+                <span class="status-badge status-pending">
+                  <mat-icon class="status-icon">pending</mat-icon> PENDING
+                </span>
+              </div>
+            </div>
+
+            <div class="confirm-actions">
+              <a mat-raised-button color="primary" routerLink="/my-bookings">
+                <mat-icon>event_note</mat-icon> View My Bookings
+              </a>
+              <a mat-stroked-button routerLink="/search">
+                <mat-icon>search</mat-icon> Browse More
+              </a>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    }
   }
 
 </div>
