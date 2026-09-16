@@ -13,6 +13,8 @@ const pool = mysql.createPool({
     user:     process.env.DB_USER     || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME     || 'bookingapp_db',
+    // Managed cloud databases (e.g. Aiven) require SSL. Enable with DB_SSL=true in .env.
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
     waitForConnections: true,
     connectionLimit:    10,
     queueLimit:         0,

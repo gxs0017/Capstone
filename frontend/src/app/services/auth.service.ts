@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
+import { API_BASE } from '../core/api.config';
 
 export interface UserProfile {
   id?: number;
@@ -25,7 +26,7 @@ export interface UserProfile {
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly API = 'http://localhost:5000/api/auth';
+  private readonly API = API_BASE;
   private readonly TOKEN_KEY = 'nb_token';
   private readonly USER_KEY = 'nb_user';
 

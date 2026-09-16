@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE } from '../core/api.config';
 
 export interface AdminUser {
   id: number;
@@ -37,7 +38,7 @@ export interface DashboardStats {
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
-  private readonly API = 'http://localhost:5000/api/auth/admin';
+  private readonly API = `${API_BASE}/admin`;
 
   constructor(private http: HttpClient) {}
 

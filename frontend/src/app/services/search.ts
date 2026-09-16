@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { API_BASE } from '../core/api.config';
 
 export interface Provider {
   id: number;
@@ -30,7 +31,7 @@ export type SortOrder  = 'ASC' | 'DESC';
 
 @Injectable({ providedIn: 'root' })
 export class SearchService {
-  private readonly API = 'http://localhost:5000/api/auth';
+  private readonly API = API_BASE;
 
   // Mock data — fallback when the backend is unreachable
   private readonly MOCK_PROVIDERS: Provider[] = [

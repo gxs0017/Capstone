@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE } from '../core/api.config';
 
 export interface ServiceItem {
   service_id: number;
@@ -9,7 +10,7 @@ export interface ServiceItem {
 
 @Injectable({ providedIn: 'root' })
 export class ProviderService {
-  private readonly API = 'http://localhost:5000/api/auth/provider';
+  private readonly API = `${API_BASE}/provider`;
 
   constructor(private http: HttpClient) {}
 

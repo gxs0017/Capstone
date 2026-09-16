@@ -1,3 +1,8 @@
+# --- AI agent / assistant files (never commit) ---
+.claude/
+CLAUDE.md
+.mcp.json
+
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Compiled output
@@ -30,7 +35,7 @@ frontend/.vscode/*
 .history/*
 
 # Miscellaneous
-.angular/cache
+.angular/
 .sass-cache/
 /connect.lock
 /coverage
