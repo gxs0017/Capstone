@@ -50,6 +50,7 @@ export class AuthService {
           localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
           this.currentUser.set(res.user);
         }
+        localStorage.setItem('nb_last_activity', Date.now().toString());
         this.isLoggedIn.set(true);
       })
     );
