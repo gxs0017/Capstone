@@ -19,7 +19,7 @@ router.post('/login',    loginUser);
 
 // ── Authenticated routes (any logged-in user) ───────────────────────────────
 router.get('/profile',   authMiddleware, checkBlocked, getProfile);
-router.get('/providers',  authMiddleware, checkBlocked, getProviders);
+router.get('/providers',  getProviders);
 
 // ── Provider routes ─────────────────────────────────────────────────────────
 router.get('/provider/my-services',              authMiddleware, checkBlocked, requireRole('PROVIDER'), getMyServices);
@@ -33,10 +33,10 @@ router.get('/bookings/my',            authMiddleware, checkBlocked, requireRole(
 router.patch('/bookings/:id/status',  authMiddleware, checkBlocked, requireRole('PROVIDER', 'REQUESTER', 'ADMIN'), updateBookingStatus);
 
 // ── Admin routes ────────────────────────────────────────────────────────────
-router.get('/admin/users',              authMiddleware, requireRole('ADMIN'), listUsers);
-router.get('/admin/users/:id',          authMiddleware, requireRole('ADMIN'), getUserById);
-router.patch('/admin/users/:id/block',  authMiddleware, requireRole('ADMIN'), toggleBlock);
-router.delete('/admin/users/:id',       authMiddleware, requireRole('ADMIN'), deleteUser);
-router.get('/admin/stats',             authMiddleware, requireRole('ADMIN'), getStats);
+router.get('/admin/users',              authMiddleware, checkBlocked, requireRole('ADMIN'), listUsers);
+router.get('/admin/users/:id',          authMiddleware, checkBlocked, requireRole('ADMIN'), getUserById);
+router.patch('/admin/users/:id/block',  authMiddleware, checkBlocked, requireRole('ADMIN'), toggleBlock);
+router.delete('/admin/users/:id',       authMiddleware, checkBlocked, requireRole('ADMIN'), deleteUser);
+router.get('/admin/stats',             authMiddleware, checkBlocked, requireRole('ADMIN'), getStats);
 
 module.exports = router;

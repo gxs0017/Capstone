@@ -64,7 +64,7 @@ const registerUser = async (req, res) => {
         const token = jwt.sign(
             { id: newUserId, email, role },
             process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+            { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
         );
 
         return res.status(201).json({
@@ -81,7 +81,7 @@ const registerUser = async (req, res) => {
 
     } catch (error) {
         console.error('Registration error:', error);
-        return res.status(500).json({ message: 'Server error during registration.', error: error.message });
+        return res.status(500).json({ message: 'Server error during registration.' });
     }
 };
 
@@ -98,7 +98,7 @@ const loginUser = async (req, res) => {
 
         const user = await User.findByEmail(email);
         if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials.' });
+            return res.status(401).json({ message: 'Invalid credentials.' });
         }
 
         // Blocked check
@@ -108,7 +108,7 @@ const loginUser = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials.' });
+            return res.status(401).json({ message: 'Invalid credentials.' });
         }
 
         // Fetch services if provider
@@ -121,7 +121,7 @@ const loginUser = async (req, res) => {
         const token = jwt.sign(
             { id: user.user_id, email: user.email, role: user.role },
             process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+            { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
         );
 
         return res.json({
