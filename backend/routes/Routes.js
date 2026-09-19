@@ -11,7 +11,7 @@ const { validateRegister, validateLogin, validateCreateBooking, validateBookingS
 
 // Controllers
 const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
-const { listUsers, getUserById, toggleBlock, deleteUser, getStats } = require('../controllers/adminController');
+const { listUsers, getUserById, toggleBlock, deleteUser, getStats, getAuditLogs } = require('../controllers/adminController');
 const { getMyServices, addService, removeService, getAvailableServices } = require('../controllers/providerController');
 const { createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
 
@@ -40,5 +40,6 @@ router.get('/admin/users/:id',          authMiddleware, checkBlocked, requireRol
 router.patch('/admin/users/:id/block',  authMiddleware, checkBlocked, requireRole('ADMIN'), validateBlockUser, toggleBlock);
 router.delete('/admin/users/:id',       authMiddleware, checkBlocked, requireRole('ADMIN'), deleteUser);
 router.get('/admin/stats',             authMiddleware, checkBlocked, requireRole('ADMIN'), getStats);
+router.get('/admin/audit-logs', authMiddleware, requireRole('ADMIN'), getAuditLogs);
 
 module.exports = router;

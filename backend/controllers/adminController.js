@@ -4,6 +4,7 @@
 
 const pool = require('../config/db');
 const { toAdminUserDTO, toAdminUserDTOList } = require('../mappers/userMapper');
+const { logAction } = require('../models/AuditLog');
 
 // ----------------------------------------------------------------
 // GET /api/admin/users — paginated list of all users
@@ -108,6 +109,8 @@ const toggleBlock = async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
+        logAction(req.user.id, blocked ? 'USER_BLOCKED' : 'USER_UNBLOCKED', 'target: ' + req.params.id, req.ip);
+
         return res.json({
             message: blocked ? 'User has been blocked.' : 'User has been unblocked.',
         });
@@ -141,6 +144,7 @@ const deleteUser = async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
+        logAction(req.user.id, 'USER_DELETED', 'target: ' + req.params.id, req.ip);
         return res.json({ message: 'User deleted successfully.' });
     } catch (err) {
         console.error('Admin deleteUser error:', err);
@@ -176,4 +180,21 @@ const getStats = async (_req, res) => {
     }
 };
 
-module.exports = { listUsers, getUserById, toggleBlock, deleteUser, getStats };
+// ----------------------------------------------------------------
+// GET /api/admin/audit-logs - recent account activity (admin only)
+// ----------------------------------------------------------------
+const getAuditLogs = async (req, res) => {
+    try {
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+        const [rows] = await pool.execute(
+            `SELECT audit_id, user_id, action, details, ip_address, created_at
+             FROM audit_logs ORDER BY created_at DESC LIMIT ${limit}`
+        );
+        return res.json(rows);
+    } catch (err) {
+        console.error('Admin getAuditLogs error:', err);
+        return res.status(500).json({ message: 'Error fetching audit logs.' });
+    }
+};
+
+module.exports = { listUsers, getUserById, toggleBlock, deleteUser, getStats, getAuditLogs };

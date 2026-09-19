@@ -4,6 +4,7 @@
 
 const pool = require('../config/db');
 const { toBookingDTOList } = require('../mappers/userMapper');
+const { logAction } = require('../models/AuditLog');
 
 // ----------------------------------------------------------------
 // POST /api/bookings — create a new booking (REQUESTER only)
@@ -39,6 +40,8 @@ const createBooking = async (req, res) => {
              VALUES (?, ?, ?, ?, ?)`,
             [pd[0].provider_detail_id, req.user.id, serviceId, scheduledDate || null, notes || null]
         );
+
+        logAction(req.user.id, 'BOOKING_CREATED', 'booking: ' + result.insertId, req.ip);
 
         return res.status(201).json({
             message: 'Booking created successfully.',
@@ -147,6 +150,7 @@ const updateBookingStatus = async (req, res) => {
             [status, req.params.id]
         );
 
+        logAction(req.user.id, 'BOOKING_' + status, 'booking: ' + req.params.id, req.ip);
         return res.json({ message: `Booking ${status.toLowerCase()} successfully.` });
     } catch (err) {
         console.error('updateBookingStatus error:', err);

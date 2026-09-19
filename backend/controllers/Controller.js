@@ -6,6 +6,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const User    = require('../models/User');
 const { toProviderDTO, toRoleBasedProfile } = require('../mappers/userMapper');
+const { logAction } = require('../models/AuditLog');
 
 // ----------------------------------------------------------------
 // POST /api/auth/register
@@ -67,6 +68,8 @@ const registerUser = async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
         );
 
+        logAction(newUserId, 'REGISTER', 'role: ' + role, req.ip);
+
         return res.status(201).json({
             message: 'User registered successfully!',
             token,
@@ -123,6 +126,8 @@ const loginUser = async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
         );
+
+        logAction(user.user_id, 'LOGIN', null, req.ip);
 
         return res.json({
             token,
