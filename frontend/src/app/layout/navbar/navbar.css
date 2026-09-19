@@ -18,3 +18,20 @@
   margin-right: 4px;
   opacity: 0.9;
 }
+
+.nav-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+}
+
+.role-chip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}

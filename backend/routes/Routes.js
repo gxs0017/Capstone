@@ -1,14 +1,45 @@
-const express       = require('express');
-const router        = express.Router();
+// routes/Routes.js
+// Main API router — organizes endpoints by domain.
+// All routes are mounted under /api/auth in server.js.
+
+const express        = require('express');
+const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
-const { registerUser, loginUser, getProviders, getUsers } = require('../controllers/Controller');
+const { requireRole, checkBlocked } = require('../middleware/roles');
+const { authLimiter } = require('../middleware/rateLimit');
+const { validateRegister, validateLogin, validateCreateBooking, validateBookingStatus, validateAddService, validateBlockUser } = require('../middleware/validators');
 
-// Public routes — no token needed
-router.post('/register', registerUser);
-router.post('/login',    loginUser);
+// Controllers
+const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
+const { listUsers, getUserById, toggleBlock, deleteUser, getStats, getAuditLogs } = require('../controllers/adminController');
+const { getMyServices, addService, removeService, getAvailableServices } = require('../controllers/providerController');
+const { createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
 
-// Protected routes — valid JWT required
-router.get('/providers', authMiddleware, getProviders);
-router.get('/all-users', authMiddleware, getUsers);
+// ── Public routes (no token needed) ──────────────────────────────────────────
+router.post('/register', authLimiter, validateRegister, registerUser);
+router.post('/login',    authLimiter, validateLogin, loginUser);
+
+// ── Authenticated routes (any logged-in user) ───────────────────────────────
+router.get('/profile',   authMiddleware, checkBlocked, getProfile);
+router.get('/providers',  getProviders);
+
+// ── Provider routes ─────────────────────────────────────────────────────────
+router.get('/provider/my-services',              authMiddleware, checkBlocked, requireRole('PROVIDER'), getMyServices);
+router.post('/provider/my-services',             authMiddleware, checkBlocked, requireRole('PROVIDER'), validateAddService, addService);
+router.delete('/provider/my-services/:serviceId', authMiddleware, checkBlocked, requireRole('PROVIDER'), removeService);
+router.get('/provider/available-services',       authMiddleware, checkBlocked, requireRole('PROVIDER'), getAvailableServices);
+
+// ── Booking routes (REQUESTER + PROVIDER + ADMIN) ───────────────────────────
+router.post('/bookings',              authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreateBooking, createBooking);
+router.get('/bookings/my',            authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getMyBookings);
+router.patch('/bookings/:id/status',  authMiddleware, checkBlocked, requireRole('PROVIDER', 'REQUESTER', 'ADMIN'), validateBookingStatus, updateBookingStatus);
+
+// ── Admin routes ────────────────────────────────────────────────────────────
+router.get('/admin/users',              authMiddleware, checkBlocked, requireRole('ADMIN'), listUsers);
+router.get('/admin/users/:id',          authMiddleware, checkBlocked, requireRole('ADMIN'), getUserById);
+router.patch('/admin/users/:id/block',  authMiddleware, checkBlocked, requireRole('ADMIN'), validateBlockUser, toggleBlock);
+router.delete('/admin/users/:id',       authMiddleware, checkBlocked, requireRole('ADMIN'), deleteUser);
+router.get('/admin/stats',             authMiddleware, checkBlocked, requireRole('ADMIN'), getStats);
+router.get('/admin/audit-logs', authMiddleware, requireRole('ADMIN'), getAuditLogs);
 
 module.exports = router;

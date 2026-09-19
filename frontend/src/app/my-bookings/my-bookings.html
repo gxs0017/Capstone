@@ -1,0 +1,128 @@
+<div class="bookings-page">
+  <div class="bookings-header">
+    <h1>{{ isRequestsView() ? 'Incoming Requests' : 'My Bookings' }}</h1>
+    <p>{{ isRequestsView() ? 'Manage incoming booking requests from requesters' : 'Track and manage your service bookings' }}</p>
+  </div>
+
+  @if (message()) {
+    <div class="message-banner">
+      <mat-icon>info</mat-icon>
+      {{ message() }}
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="state-center">
+      <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+      <p>Loading bookings...</p>
+    </div>
+  }
+
+  @if (!loading()) {
+    @if (bookings().length === 0) {
+      <div class="state-center">
+        <mat-icon class="empty-icon">event_busy</mat-icon>
+        <h3>No bookings yet</h3>
+        @if (authService.isRequester()) {
+          <p>Browse services and book a provider to get started.</p>
+          <a mat-raised-button color="primary" routerLink="/search">Browse Services</a>
+        } @else {
+          <p>Bookings from requesters will appear here.</p>
+        }
+      </div>
+    } @else {
+      <div class="bookings-list">
+        @for (booking of bookings(); track booking.bookingId) {
+          <mat-card class="booking-card">
+            <mat-card-content>
+              <div class="booking-top">
+                <!-- Service info -->
+                <div class="service-info">
+                  <mat-icon class="service-icon">{{ getServiceIcon(booking.service) }}</mat-icon>
+                  <div>
+                    <div class="service-name">{{ booking.service }}</div>
+                    <div class="booking-date">
+                      Booked: {{ booking.bookingDate | date:'mediumDate' }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Status -->
+                <span class="status-badge" [ngClass]="getStatusClass(booking.status)">
+                  <mat-icon class="status-icon">{{ getStatusIcon(booking.status) }}</mat-icon>
+                  {{ booking.status }}
+                </span>
+              </div>
+
+              <mat-divider class="card-divider"></mat-divider>
+
+              <div class="booking-details">
+                <!-- Provider / Requester -->
+                @if (!isRequestsView()) {
+                  <div class="person-row">
+                    <div class="person-avatar">
+                      {{ getInitials(booking.provider.firstName, booking.provider.lastName) }}
+                    </div>
+                    <div>
+                      <span class="person-label">Provider</span>
+                      <span class="person-name">{{ booking.provider.firstName }} {{ booking.provider.lastName }}</span>
+                      <span class="person-location">{{ booking.provider.city }}, {{ booking.provider.province }}</span>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="person-row">
+                    <div class="person-avatar">
+                      {{ getInitials(booking.requester.firstName, booking.requester.lastName) }}
+                    </div>
+                    <div>
+                      <span class="person-label">Requester</span>
+                      <span class="person-name">{{ booking.requester.firstName }} {{ booking.requester.lastName }}</span>
+                    </div>
+                  </div>
+                }
+
+                @if (booking.scheduledDate) {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">event</mat-icon>
+                    <div>
+                      <span class="detail-label">Scheduled</span>
+                      <span class="detail-value">{{ booking.scheduledDate | date:'mediumDate' }}</span>
+                    </div>
+                  </div>
+                }
+
+                @if (booking.notes) {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">notes</mat-icon>
+                    <div>
+                      <span class="detail-label">Notes</span>
+                      <span class="detail-value">{{ booking.notes }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </mat-card-content>
+
+            <!-- Actions -->
+            @if (booking.status === 'PENDING') {
+              <mat-card-actions align="end" class="card-actions">
+                @if (actionLoading() === booking.bookingId) {
+                  <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                } @else {
+                  @if (isRequestsView()) {
+                    <button mat-raised-button color="primary" (click)="confirmBooking(booking)">
+                      <mat-icon>check</mat-icon> Confirm
+                    </button>
+                  }
+                  <button mat-stroked-button color="warn" (click)="cancelBooking(booking)">
+                    <mat-icon>close</mat-icon> Cancel
+                  </button>
+                }
+              </mat-card-actions>
+            }
+          </mat-card>
+        }
+      </div>
+    }
+  }
+</div>

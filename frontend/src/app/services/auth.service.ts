@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
+import { API_BASE } from '../core/api.config';
 
 export interface UserProfile {
   id?: number;
@@ -10,14 +11,22 @@ export interface UserProfile {
   lastName: string;
   email: string;
   role: string;
+  city?: string;
+  province?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  street?: string;
+  postalCode?: string;
+  isBlocked?: boolean;
   services?: string[];
+  createdAt?: string;
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly API = 'http://localhost:5000/api/auth';
+  private readonly API = API_BASE;
   private readonly TOKEN_KEY = 'nb_token';
   private readonly USER_KEY = 'nb_user';
 
@@ -41,7 +50,18 @@ export class AuthService {
           localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
           this.currentUser.set(res.user);
         }
+        localStorage.setItem('nb_last_activity', Date.now().toString());
         this.isLoggedIn.set(true);
+      })
+    );
+  }
+
+  /** Fetch fresh profile from backend and update local state */
+  refreshProfile(): Observable<UserProfile> {
+    return this.http.get<UserProfile>(`${this.API}/profile`).pipe(
+      tap((user) => {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+        this.currentUser.set(user);
       })
     );
   }
@@ -56,6 +76,23 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  /** Role helpers for templates and guards */
+  get role(): string {
+    return this.currentUser()?.role ?? '';
+  }
+
+  isAdmin(): boolean {
+    return this.role === 'ADMIN';
+  }
+
+  isProvider(): boolean {
+    return this.role === 'PROVIDER';
+  }
+
+  isRequester(): boolean {
+    return this.role === 'REQUESTER';
   }
 
   private hasToken(): boolean {

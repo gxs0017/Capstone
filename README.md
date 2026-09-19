@@ -1,59 +1,90 @@
-# NeighbourhoodBookingApp
+# Neighbourhood Booking App
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.2.
+A full-stack peer-to-peer marketplace where neighbours offer and book local services
+(snow shovelling, babysitting, tutoring, lawn mowing). Capstone project, 2026.
 
-## Development server
+## Tech stack
+- **Frontend:** Angular 21 (standalone components, Angular Material, signals, reactive forms)
+- **Backend:** Node.js + Express 5, JWT auth, bcryptjs
+- **Database:** MySQL (mysql2, connection pooling, parameterized queries)
 
-To start a local development server, run:
+## Roles
+- **REQUESTER** – searches providers and books services
+- **PROVIDER** – lists services and confirms/cancels incoming bookings
+- **ADMIN** – manages users (block/unblock/delete) and views dashboard stats
 
-```bash
-ng serve
+## Project structure
+```
+backend/    Express API (controllers, models, routes, middleware, DTOs)
+frontend/   Angular app (components, services, guards, interceptors)
+database/   MySQL schema (TableSchema.sql) + mock data (MockData.sql)
+documents/  Project documents
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Prerequisites
+- Node.js 20+ and npm
+- MySQL 8+
 
-## Code scaffolding
+## Setup
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+### 1. Database
+Run these SQL files in MySQL (Workbench or CLI), in order:
+1. `database/TableSchema.sql` — creates the `bookingapp_db` database and tables
+2. `database/MockData.sql` — inserts sample users, services, and bookings
 
+### 2. Backend
 ```bash
-ng generate component component-name
+cd backend
+npm install
+copy .env.example .env    # then edit .env with your real MySQL password + a JWT secret
+npm start                 # starts on http://localhost:5000
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
+### 3. Frontend
 ```bash
-ng generate --help
+cd frontend
+npm install
+npm start                 # starts on http://localhost:4200
 ```
 
-## Building
+## Environment variables
+See `backend/.env.example`. Copy it to `backend/.env` and fill in real values.
+The real `.env` is gitignored and must never be committed.
 
-To build the project run:
+## Test logins
+All seeded users share the password **`pass123`**:
+- Admin: `admin@test.com`
+- Requester: `sarah@test.com`
+- Provider: `marcus@test.com`
 
-```bash
-ng build
-```
+## Git workflow
+- `working-feature-test` — active development branch
+- `testdemoapplication` — frozen snapshot of the finalized prototype (restore point)
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
-## Running unit tests
+## .env File format:
+# Backend environment variables.
+# Copy this file to ".env" in the same folder and fill in real values.
+# The real .env is gitignored — never commit it.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+# --- MySQL database connection ---
+DB_HOST==<please ask me (Guransh)>
+DB_PORT==<please ask me (Guransh)>
+DB_USER==<please ask me (Guransh)>
+DB_PASSWORD=<please ask me (Guransh)>
+DB_NAME==<please ask me (Guransh)>
+DB_SSL==<please ask me (Guransh)>
 
-```bash
-ng test
-```
+# --- Server ---
+PORT==<please ask me (Guransh)>
 
-## Running end-to-end tests
+# --- JWT authentication ---
+# Use a long, random string for the secret (e.g. 32+ characters).
+JWT_SECRET==<please ask me (Guransh)>
+JWT_EXPIRES_IN==<please ask me (Guransh)>
 
-For end-to-end (e2e) testing, run:
 
-```bash
-ng e2e
-```
+#If any team member or professor requires the env with pas to run locally please contact me ( Guransh ).
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Team
+Alisson Johnson · Broinson Jeyarajah · Judd Rosagya · Guransh Singh Bagga

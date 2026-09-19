@@ -16,9 +16,8 @@ DROP TABLE IF EXISTS users;
 
 -- ----------------------------------------------------------------
 -- USERS TABLE
--- Stores both PROVIDER and REQUESTER accounts.
--- Address stored as flat columns to match the backend payload
--- (frontend sends addressForm which backend remaps to address.*).
+-- Stores PROVIDER, REQUESTER, and ADMIN accounts.
+-- is_blocked lets admins restrict accounts without deleting them.
 -- ----------------------------------------------------------------
 CREATE TABLE users (
     user_id       INT AUTO_INCREMENT PRIMARY KEY,
@@ -32,7 +31,8 @@ CREATE TABLE users (
     city          VARCHAR(50)  NOT NULL,
     province      VARCHAR(20)  NOT NULL,
     postal_code   VARCHAR(10)  NOT NULL,
-    role          ENUM('REQUESTER','PROVIDER') NOT NULL,
+    role          ENUM('REQUESTER','PROVIDER','ADMIN') NOT NULL,
+    is_blocked    BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -62,7 +62,8 @@ CREATE TABLE provider_details (
 -- ----------------------------------------------------------------
 -- BOOKINGS TABLE
 -- Links a requester to a provider+service combination.
--- status tracks booking lifecycle for future booking logic.
+-- scheduled_date is when the service should happen.
+-- notes lets the requester add context for the provider.
 -- ----------------------------------------------------------------
 CREATE TABLE bookings (
     booking_id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -70,6 +71,8 @@ CREATE TABLE bookings (
     requester_id       INT NOT NULL,
     service_id         INT NOT NULL,
     status             ENUM('PENDING','CONFIRMED','CANCELLED') NOT NULL DEFAULT 'PENDING',
+    scheduled_date     DATE         DEFAULT NULL,
+    notes              TEXT         DEFAULT NULL,
     booking_date       DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (provider_detail_id) REFERENCES provider_details(provider_detail_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (requester_id)       REFERENCES users(user_id)                       ON DELETE CASCADE ON UPDATE CASCADE,

@@ -21,14 +21,30 @@
       <input matInput [formControl]="cityFilter" placeholder="e.g. Toronto" />
     </mat-form-field>
 
-    <button mat-raised-button color="primary" (click)="loadProviders()">
-      <mat-icon>search</mat-icon> Search
-    </button>
     <button mat-stroked-button (click)="clearFilters()">
       <mat-icon>clear</mat-icon> Clear
     </button>
   </div>
 
+  <!-- Sort Bar -->
+  <div class="sort-bar">
+    <span class="sort-label">Sort by:</span>
+    @for (toggle of sortToggles; track toggle.column) {
+      <button mat-stroked-button
+              class="sort-chip"
+              [class.sort-chip--active]="isSortActive(toggle)"
+              (click)="toggleSort(toggle)"
+              [matTooltip]="toggle.label + (isSortActive(toggle) ? (activeOrder() === 'ASC' ? ' (ascending)' : ' (descending)') : '')">
+        <mat-icon>{{ toggle.icon }}</mat-icon>
+        {{ toggle.label }}
+        @if (getSortArrow(toggle)) {
+          <mat-icon class="sort-arrow">{{ getSortArrow(toggle) }}</mat-icon>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Mock data notice -->
   @if (usingMock()) {
     <div class="mock-notice">
       <mat-icon>info</mat-icon>
@@ -36,6 +52,7 @@
     </div>
   }
 
+  <!-- Loading -->
   @if (loading()) {
     <div class="state-center">
       <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
@@ -43,6 +60,7 @@
     </div>
   }
 
+  <!-- Results -->
   @if (!loading()) {
     @if (providers().length === 0) {
       <div class="state-center">
@@ -50,14 +68,19 @@
         <h3>No providers found</h3>
         <p>Try adjusting your filters or check back later.</p>
       </div>
+
     } @else {
-      <p class="results-count">{{ providers().length }} provider(s) found</p>
+      <!-- Results summary -->
+      <div class="results-bar">
+        <p class="results-count">{{ pageLabel }}</p>
+      </div>
+
+      <!-- Provider cards -->
       <div class="providers-grid">
         @for (provider of providers(); track provider.id) {
           <mat-card class="provider-card">
             <mat-card-content>
 
-              <!-- Provider Header -->
               <div class="provider-header">
                 <div class="provider-avatar">{{ getInitials(provider) }}</div>
                 <div>
@@ -69,17 +92,11 @@
                 </div>
               </div>
 
-              <!-- Service Tiers (Uber-style chips) -->
               <p class="services-label">Available Services</p>
               <div class="service-tiers">
                 @for (svc of provider.services; track svc) {
                   <div class="service-tier" (click)="bookNow(provider, svc)">
-                    <mat-icon class="tier-icon">{{
-                      svc === 'Snow Shovelling' ? 'ac_unit' :
-                      svc === 'Babysitting'     ? 'child_care' :
-                      svc === 'Tutoring'        ? 'school' :
-                      svc === 'Lawn Mowing'     ? 'yard' : 'handyman'
-                    }}</mat-icon>
+                    <mat-icon class="tier-icon">{{ getServiceIcon(svc) }}</mat-icon>
                     <span class="tier-name">{{ svc }}</span>
                     <mat-icon class="tier-arrow">chevron_right</mat-icon>
                   </div>
@@ -89,13 +106,78 @@
             </mat-card-content>
 
             <mat-card-actions align="end">
-              <button mat-button color="primary">
-                <mat-icon>email</mat-icon> Contact
+              <button mat-button color="primary" (click)="toggleContact(provider.id)">
+                <mat-icon>{{ expandedContactId() === provider.id ? 'expand_less' : 'contact_mail' }}</mat-icon>
+                {{ expandedContactId() === provider.id ? 'Hide' : 'Contact' }}
               </button>
             </mat-card-actions>
+
+            @if (expandedContactId() === provider.id) {
+              <div class="contact-details">
+                <div class="contact-row">
+                  <mat-icon class="contact-icon">email</mat-icon>
+                  <span>{{ provider.email }}</span>
+                </div>
+                @if (provider.phoneNumber) {
+                  <div class="contact-row">
+                    <mat-icon class="contact-icon">phone</mat-icon>
+                    <span>{{ provider.phoneNumber }}</span>
+                  </div>
+                }
+              </div>
+            }
           </mat-card>
         }
       </div>
+
+      <!-- Pagination controls -->
+      @if (totalPages() > 1) {
+        <div class="pagination">
+
+          <!-- Prev -->
+          <button mat-icon-button
+                  [disabled]="currentPage() === 1"
+                  (click)="prevPage()"
+                  matTooltip="Previous page">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+
+          <!-- Page number buttons -->
+          @if (pageNumbers[0] > 1) {
+            <button mat-stroked-button class="page-btn" (click)="goToPage(1)">1</button>
+            @if (pageNumbers[0] > 2) {
+              <span class="page-ellipsis">…</span>
+            }
+          }
+
+          @for (n of pageNumbers; track n) {
+            <button mat-stroked-button
+                    class="page-btn"
+                    [class.page-btn--active]="n === currentPage()"
+                    (click)="goToPage(n)">
+              {{ n }}
+            </button>
+          }
+
+          @if (pageNumbers[pageNumbers.length - 1] < totalPages()) {
+            @if (pageNumbers[pageNumbers.length - 1] < totalPages() - 1) {
+              <span class="page-ellipsis">…</span>
+            }
+            <button mat-stroked-button class="page-btn" (click)="goToPage(totalPages())">
+              {{ totalPages() }}
+            </button>
+          }
+
+          <!-- Next -->
+          <button mat-icon-button
+                  [disabled]="currentPage() === totalPages()"
+                  (click)="nextPage()"
+                  matTooltip="Next page">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+
+        </div>
+      }
     }
   }
 </div>

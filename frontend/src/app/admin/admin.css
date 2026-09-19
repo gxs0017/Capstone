@@ -1,0 +1,274 @@
+.admin-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.admin-header {
+  margin-bottom: 32px;
+}
+
+.admin-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.admin-header p {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: var(--mat-sys-primary);
+  margin-bottom: 8px;
+}
+
+.warn-icon {
+  color: #f59e0b;
+}
+
+.error-icon {
+  color: #ef4444;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.section-divider {
+  margin: 32px 0;
+}
+
+.section-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 20px;
+}
+
+/* Filters */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  background: var(--mat-sys-surface-container-low);
+  padding: 20px 24px;
+  border-radius: 12px;
+}
+
+.filter-field {
+  min-width: 180px;
+  flex: 1;
+}
+
+/* Loading / Empty */
+.state-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 0;
+  gap: 12px;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  opacity: 0.4;
+}
+
+/* User list */
+.users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-card {
+  transition: box-shadow 0.2s;
+}
+
+.user-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.user-blocked {
+  opacity: 0.7;
+  border-left: 3px solid #ef4444;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.avatar-blocked {
+  background: #94a3b8;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blocked-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fef2f2;
+  color: #ef4444;
+  letter-spacing: 0.05em;
+}
+
+.user-email {
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.user-meta {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* Role badges */
+.role-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.badge-admin {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.badge-provider {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.badge-requester {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* Action message banner */
+.action-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+}
+
+/* Page number buttons (consistent with search page) */
+.page-btn {
+  min-width: 36px !important;
+  width: 36px;
+  height: 36px !important;
+  padding: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: 36px !important;
+}
+
+.page-btn--active {
+  background: var(--mat-sys-primary, #1d4ed8) !important;
+  color: #fff !important;
+  border-color: var(--mat-sys-primary, #1d4ed8) !important;
+}
+
+.page-ellipsis {
+  color: var(--mat-sys-on-surface-variant);
+  padding: 0 4px;
+  line-height: 36px;
+  font-size: 0.9rem;
+}
+
+.page-info {
+  font-size: 0.9rem;
+  color: var(--mat-sys-on-surface-variant);
+}

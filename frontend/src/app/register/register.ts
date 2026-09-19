@@ -52,7 +52,7 @@ export class RegisterComponent {
       },
     ]),
     email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [Validators.required, Validators.minLength(6)]),
+    password: new FormControl('', [Validators.required, Validators.minLength(8)]),
     addressForm: new FormGroup({
       street: new FormControl('', [Validators.required]),
       city: new FormControl('', [Validators.required]),

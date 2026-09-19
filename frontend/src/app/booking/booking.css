@@ -25,6 +25,18 @@
   font-size: 0.95rem;
 }
 
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+}
+
 /* Summary card */
 .summary-card {
   border-radius: 16px;
@@ -118,50 +130,8 @@
   margin-right: 3px;
 }
 
-/* Booking reference */
-.reference-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.ref-icon {
-  font-size: 28px;
-  width: 28px;
-  height: 28px;
-  color: var(--mat-sys-secondary);
-  flex-shrink: 0;
-}
-
-.ref-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mat-sys-on-surface-variant);
-  margin: 0 0 4px;
-}
-
-.ref-number {
-  font-size: 1.1rem;
-  font-weight: 700;
-  font-family: monospace;
-  letter-spacing: 0.05em;
-  margin: 0;
-}
-
-/* Status badge */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 20px;
-  padding: 6px 14px;
-  background: var(--mat-sys-secondary-container, #fef3c7);
-  color: var(--mat-sys-on-secondary-container, #92400e);
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
+.full-width {
+  width: 100%;
 }
 
 .card-actions {
@@ -169,14 +139,132 @@
   gap: 8px;
 }
 
-/* Info notice */
-.mock-notice {
+.btn-spinner {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+/* Confirmation */
+.confirmation-card {
+  text-align: center;
+  border-radius: 16px;
+}
+
+.confirm-icon {
+  font-size: 72px;
+  width: 72px;
+  height: 72px;
+  color: #059669;
+  margin-bottom: 12px;
+}
+
+.confirmation-card h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.confirm-subtitle {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 24px;
+}
+
+.confirm-details {
+  text-align: left;
+  max-width: 360px;
+  margin: 0 auto 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.confirm-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.confirm-value {
+  font-weight: 500;
+}
+
+.ref-number {
+  font-family: monospace;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.status-icon {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Payment method */
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.payment-radio {
+  margin-bottom: 10px;
+}
+
+.payment-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--mat-sys-surface-container-low, #f5f5f5);
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.payment-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--mat-sys-primary);
+  flex-shrink: 0;
+}
+
+.payment-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.payment-desc {
+  display: block;
+  font-size: 0.8rem;
   color: var(--mat-sys-on-surface-variant);
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 0.875rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
 }

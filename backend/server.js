@@ -1,16 +1,25 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors    = require('cors');
+const helmet  = require('helmet');
 const pool    = require('./config/db');
 const Routes  = require('./routes/Routes');
+const { globalLimiter } = require('./middleware/rateLimit');
 
 const app  = express();
+app.set('trust proxy', 1); // trust host proxy (Render) so rate limiting sees real client IPs
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Security headers
+app.use(helmet());
+// Lock CORS to the frontend origin(s); add your deployed URL to CORS_ORIGINS in .env (comma-separated)
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4200').split(',').map(o => o.trim());
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Mount auth/provider routes
+app.use('/api', globalLimiter);
 app.use('/api/auth', Routes);
 
 app.get('/', (req, res) => {

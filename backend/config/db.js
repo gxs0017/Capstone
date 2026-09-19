@@ -3,6 +3,8 @@
 // Using a pool (not a single connection) so concurrent requests
 // don't block each other and dropped connections are auto-retried.
 
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
@@ -11,6 +13,8 @@ const pool = mysql.createPool({
     user:     process.env.DB_USER     || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME     || 'bookingapp_db',
+    // Managed cloud databases (e.g. Aiven) require SSL. Enable with DB_SSL=true in .env.
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
     waitForConnections: true,
     connectionLimit:    10,
     queueLimit:         0,
