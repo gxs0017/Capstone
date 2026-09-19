@@ -5,8 +5,10 @@ const cors    = require('cors');
 const helmet  = require('helmet');
 const pool    = require('./config/db');
 const Routes  = require('./routes/Routes');
+const { globalLimiter } = require('./middleware/rateLimit');
 
 const app  = express();
+app.set('trust proxy', 1); // trust host proxy (Render) so rate limiting sees real client IPs
 const PORT = process.env.PORT || 5000;
 
 // Security headers
@@ -17,6 +19,7 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Mount auth/provider routes
+app.use('/api', globalLimiter);
 app.use('/api/auth', Routes);
 
 app.get('/', (req, res) => {

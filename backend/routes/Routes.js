@@ -6,6 +6,7 @@ const express        = require('express');
 const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { requireRole, checkBlocked } = require('../middleware/roles');
+const { authLimiter } = require('../middleware/rateLimit');
 
 // Controllers
 const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
@@ -14,8 +15,8 @@ const { getMyServices, addService, removeService, getAvailableServices } = requi
 const { createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
 
 // ── Public routes (no token needed) ──────────────────────────────────────────
-router.post('/register', registerUser);
-router.post('/login',    loginUser);
+router.post('/register', authLimiter, registerUser);
+router.post('/login',    authLimiter, loginUser);
 
 // ── Authenticated routes (any logged-in user) ───────────────────────────────
 router.get('/profile',   authMiddleware, checkBlocked, getProfile);
