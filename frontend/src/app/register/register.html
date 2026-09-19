@@ -68,13 +68,13 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Password (min. 6 characters)</mat-label>
+            <mat-label>Password (min. 8 characters)</mat-label>
             <input type="password" matInput formControlName="password" autocomplete="new-password" />
             @if (registerForm.get('password')?.hasError('required') && registerForm.get('password')?.touched) {
               <mat-error>Password is required</mat-error>
             }
             @if (registerForm.get('password')?.hasError('minlength') && registerForm.get('password')?.touched) {
-              <mat-error>Password must be at least 6 characters</mat-error>
+              <mat-error>Password must be at least 8 characters</mat-error>
             }
           </mat-form-field>
 
