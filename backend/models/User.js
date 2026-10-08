@@ -58,25 +58,32 @@ const addProviderService = async (userId, serviceId) => {
 // Query params (all optional):
 //   serviceName  – filter by exact service name
 //   city         – filter by city substring
-//   sort         – 'first_name' | 'city' | 'created_at'  (default: 'created_at')
-//   order        – 'ASC' | 'DESC'                         (default: 'DESC')
-//   page         – 1-indexed page number                  (default: 1)
-//   limit        – results per page, max 50               (default: 6)
+//   sort         – 'avgRating' | 'first_name' | 'city' | 'created_at'  (default: 'avgRating')
+//   order        – 'ASC' | 'DESC'                                      (default: 'DESC')
+//   page         – 1-indexed page number                               (default: 1)
+//   limit        – results per page, max 50                            (default: 6)
 
 const getProviders = async (
     serviceName,
     city,
-    sort  = 'created_at',
+    sort  = 'avgRating',
     order = 'DESC',
     page  = 1,
     limit = 6
 ) => {
     // ── Security: whitelist sort column and order ─────────────────────────────
-    const ALLOWED_SORT_COLUMNS = ['first_name', 'city', 'created_at'];
+    // 'avgRating' is a derived column (subquery below), not a real users column,
+    // so it's handled separately from the plain u.<column> sorts.
+    const ALLOWED_SORT_COLUMNS = ['avgRating', 'first_name', 'city', 'created_at'];
     const ALLOWED_ORDERS       = ['ASC', 'DESC'];
 
-    const safeSortColumn = ALLOWED_SORT_COLUMNS.includes(sort)           ? sort           : 'created_at';
+    const safeSortColumn = ALLOWED_SORT_COLUMNS.includes(sort)           ? sort           : 'avgRating';
     const safeOrder      = ALLOWED_ORDERS.includes(order.toUpperCase())  ? order.toUpperCase() : 'DESC';
+    // Providers with no reviews (NULL avgRating) always sort to the bottom,
+    // regardless of ASC/DESC, so a 5-star provider always outranks an unrated one.
+    const orderByClause  = safeSortColumn === 'avgRating'
+        ? `avgRating IS NULL ASC, avgRating ${safeOrder}`
+        : `u.${safeSortColumn} ${safeOrder}`;
 
     // ── Sanitise pagination values ────────────────────────────────────────────
     const safePage  = Math.max(1, parseInt(page,  10) || 1);
@@ -122,14 +129,16 @@ const getProviders = async (
             u.city,
             u.province,
             u.role,
-            JSON_ARRAYAGG(s.service_name) AS services
+            JSON_ARRAYAGG(s.service_name) AS services,
+            (SELECT ROUND(AVG(rv.rating), 1) FROM reviews rv WHERE rv.provider_id = u.user_id) AS avgRating,
+            (SELECT COUNT(*)                 FROM reviews rv WHERE rv.provider_id = u.user_id) AS reviewCount
         FROM users u
         JOIN provider_details pd ON u.user_id = pd.user_id
         JOIN services s ON pd.service_id = s.service_id
         WHERE u.role = 'PROVIDER'
         ${whereExtra}
         GROUP BY u.user_id
-        ORDER BY u.${safeSortColumn} ${safeOrder}
+        ORDER BY ${orderByClause}
         LIMIT ${safeLimit} OFFSET ${offset}
     `;
     const [rows] = await pool.execute(dataQuery, filterParams);
@@ -139,6 +148,8 @@ const getProviders = async (
         services: typeof row.services === 'string'
             ? JSON.parse(row.services)
             : (row.services || []),
+        avgRating: row.avgRating !== null ? Number(row.avgRating) : null,
+        reviewCount: Number(row.reviewCount) || 0,
     }));
 
     return {

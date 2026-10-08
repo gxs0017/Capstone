@@ -89,6 +89,19 @@
                     <mat-icon class="location-icon">location_on</mat-icon>
                     {{ provider.city }}, {{ provider.province }}
                   </mat-card-subtitle>
+                  @if (provider.avgRating) {
+                    <div class="rating-badge">
+                      <span class="rating-stars">
+                        @for (star of [1, 2, 3, 4, 5]; track star) {
+                          <mat-icon class="rating-star" [class.filled]="getStarIcon(provider.avgRating, star) !== 'star_border'">
+                            {{ getStarIcon(provider.avgRating, star) }}
+                          </mat-icon>
+                        }
+                      </span>
+                      <span>{{ provider.avgRating | number:'1.1-1' }}</span>
+                      <span class="rating-count">({{ provider.reviewCount }})</span>
+                    </div>
+                  }
                 </div>
               </div>
 
@@ -106,6 +119,10 @@
             </mat-card-content>
 
             <mat-card-actions align="end">
+              <button mat-button color="primary" (click)="toggleReviews(provider.id)">
+                <mat-icon>{{ expandedReviewsId() === provider.id ? 'expand_less' : 'reviews' }}</mat-icon>
+                {{ expandedReviewsId() === provider.id ? 'Hide' : 'Reviews' }}
+              </button>
               <button mat-button color="primary" (click)="toggleContact(provider.id)">
                 <mat-icon>{{ expandedContactId() === provider.id ? 'expand_less' : 'contact_mail' }}</mat-icon>
                 {{ expandedContactId() === provider.id ? 'Hide' : 'Contact' }}
@@ -123,6 +140,37 @@
                     <mat-icon class="contact-icon">phone</mat-icon>
                     <span>{{ provider.phoneNumber }}</span>
                   </div>
+                }
+              </div>
+            }
+
+            @if (expandedReviewsId() === provider.id) {
+              <div class="reviews-panel">
+                @if (loadingReviews() && getReviewsFor(provider.id).length === 0) {
+                  <div class="reviews-loading">
+                    <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                  </div>
+                } @else if (getReviewsFor(provider.id).length === 0) {
+                  <p class="no-reviews">No reviews yet.</p>
+                } @else {
+                  @for (review of getReviewsFor(provider.id); track review.reviewId) {
+                    <div class="review-item">
+                      <div class="review-item-header">
+                        <span class="review-author">{{ review.requester.firstName }} {{ review.requester.lastName }}</span>
+                        <span class="review-stars">
+                          @for (star of [1, 2, 3, 4, 5]; track star) {
+                            <mat-icon class="review-star" [class.filled]="star <= review.rating">
+                              {{ star <= review.rating ? 'star' : 'star_border' }}
+                            </mat-icon>
+                          }
+                        </span>
+                      </div>
+                      @if (review.comment) {
+                        <p class="review-comment">{{ review.comment }}</p>
+                      }
+                      <p class="review-date">{{ review.createdAt | date:'mediumDate' }}</p>
+                    </div>
+                  }
                 }
               </div>
             }

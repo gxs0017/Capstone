@@ -5,10 +5,10 @@ import {
   DomSanitizer
 } from "./chunk-4LKHJNIB.js";
 import "./chunk-7DO6L2IZ.js";
-import "./chunk-VN55ZKFB.js";
 import {
   BidiModule
 } from "./chunk-4X26FPMN.js";
+import "./chunk-VN55ZKFB.js";
 import {
   HttpClient
 } from "./chunk-ND2XGXJB.js";

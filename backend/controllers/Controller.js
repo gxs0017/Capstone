@@ -166,7 +166,7 @@ const getProviders = async (req, res) => {
         const result = await User.getProviders(
             service || null,
             city    || null,
-            sort    || 'created_at',
+            sort    || 'avgRating',
             order   || 'DESC',
             page    || 1,
             limit   || 6

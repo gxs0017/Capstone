@@ -13,6 +13,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CommonModule } from '@angular/common';
 import { SearchService, Provider, ProviderPage, SortColumn, SortOrder } from '../services/search';
+import { ReviewService, Review } from '../services/review.service';
 
 interface SortToggle {
   label:  string;
@@ -48,6 +49,7 @@ const PAGE_SIZE = 6;
 })
 export class SearchComponent implements OnInit, OnDestroy {
   private searchService = inject(SearchService);
+  private reviewService = inject(ReviewService);
   private router        = inject(Router);
   private subs          = new Subscription();
 
@@ -64,19 +66,25 @@ export class SearchComponent implements OnInit, OnDestroy {
   loading   = signal(false);
   usingMock = signal(false);
 
-  // Sort state
-  activeSort  = signal<SortColumn>('created_at');
+  // Sort state — highest rated providers show first by default
+  activeSort  = signal<SortColumn>('avgRating');
   activeOrder = signal<SortOrder>('DESC');
 
   // Contact expansion state — track which provider card has contact open
   expandedContactId = signal<number | null>(null);
 
+  // Reviews panel state — track which provider card has reviews open, and cache results per provider
+  expandedReviewsId = signal<number | null>(null);
+  loadingReviews    = signal(false);
+  providerReviews   = signal<Map<number, Review[]>>(new Map());
+
   readonly serviceOptions = ['Snow Shovelling', 'Babysitting', 'Tutoring', 'Lawn Mowing'];
 
   readonly sortToggles: SortToggle[] = [
-    { label: 'Date',  column: 'created_at', icon: 'schedule' },
-    { label: 'Name',  column: 'first_name', icon: 'sort_by_alpha' },
-    { label: 'City',  column: 'city',       icon: 'location_city' },
+    { label: 'Rating', column: 'avgRating',  icon: 'star' },
+    { label: 'Date',   column: 'created_at', icon: 'schedule' },
+    { label: 'Name',   column: 'first_name', icon: 'sort_by_alpha' },
+    { label: 'City',   column: 'city',       icon: 'location_city' },
   ];
 
   ngOnInit(): void {
@@ -183,17 +191,60 @@ export class SearchComponent implements OnInit, OnDestroy {
     );
   }
 
+  // Expands/collapses the reviews panel for a provider card, fetching
+  // and caching the individual reviews the first time it's opened.
+  toggleReviews(providerId: number): void {
+    if (this.expandedReviewsId() === providerId) {
+      this.expandedReviewsId.set(null);
+      return;
+    }
+
+    this.expandedReviewsId.set(providerId);
+
+    if (this.providerReviews().has(providerId)) return;
+
+    this.loadingReviews.set(true);
+    this.reviewService.getReviewsForProvider(providerId).subscribe({
+      next: (result) => {
+        const next = new Map(this.providerReviews());
+        next.set(providerId, result.reviews);
+        this.providerReviews.set(next);
+        this.loadingReviews.set(false);
+      },
+      error: () => {
+        const next = new Map(this.providerReviews());
+        next.set(providerId, []);
+        this.providerReviews.set(next);
+        this.loadingReviews.set(false);
+      },
+    });
+  }
+
+  getReviewsFor(providerId: number): Review[] {
+    return this.providerReviews().get(providerId) || [];
+  }
+
   // Clear everything back to defaults
   clearFilters(): void {
     this.serviceFilter.reset();
     this.cityFilter.reset();
-    this.activeSort.set('created_at');
+    this.activeSort.set('avgRating');
     this.activeOrder.set('DESC');
     this.loadProviders(1);
   }
 
   getInitials(p: Provider): string {
     return (p.firstName[0] + p.lastName[0]).toUpperCase();
+  }
+
+  // Renders a 5-star row for an average rating that can be fractional
+  // (e.g. 4.5) — full stars up to the floor, one half star if the
+  // remainder is >= .5, empty stars for the rest.
+  getStarIcon(rating: number | null | undefined, position: number): string {
+    const r = rating ?? 0;
+    if (position <= Math.floor(r)) return 'star';
+    if (position === Math.ceil(r) && r % 1 >= 0.5) return 'star_half';
+    return 'star_border';
   }
 
   getServiceIcon(svc: string): string {

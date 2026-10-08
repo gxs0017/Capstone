@@ -13,6 +13,8 @@ export interface Provider {
   city: string;
   province: string;
   services: string[];
+  avgRating?: number | null;
+  reviewCount?: number;
 }
 
 // Paginated response envelope returned by GET /api/auth/providers
@@ -25,7 +27,7 @@ export interface ProviderPage {
 }
 
 // Sort types mirror the backend whitelist in models/User.js
-export type SortColumn = 'first_name' | 'city' | 'created_at';
+export type SortColumn = 'avgRating' | 'first_name' | 'city' | 'created_at';
 export type SortOrder  = 'ASC' | 'DESC';
 
 @Injectable({ providedIn: 'root' })
@@ -35,29 +37,29 @@ export class SearchService {
   // Mock data — fallback when the backend is unreachable
   private readonly MOCK_PROVIDERS: Provider[] = [
     { id: 1,  firstName: 'Marcus',  lastName: 'Houston',  email: 'marcus@test.com',  phoneNumber: '4035552341',
-      role: 'PROVIDER', city: 'Calgary',     province: 'AB', services: ['Snow Shovelling', 'Lawn Mowing'] },
+      role: 'PROVIDER', city: 'Calgary',     province: 'AB', services: ['Snow Shovelling', 'Lawn Mowing'], avgRating: 5,   reviewCount: 1 },
     { id: 2,  firstName: 'Emily',   lastName: 'Brown',    email: 'emily@test.com',   phoneNumber: '6475552222',
-      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Babysitting', 'Tutoring'] },
+      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Babysitting', 'Tutoring'], avgRating: null, reviewCount: 0 },
     { id: 3,  firstName: 'Priya',   lastName: 'Nair',     email: 'priya@test.com',   phoneNumber: '6475553456',
-      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Tutoring'] },
+      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Tutoring'], avgRating: null, reviewCount: 0 },
     { id: 4,  firstName: 'Daniel',  lastName: 'Brooks',   email: 'daniel@test.com',  phoneNumber: '9055554321',
-      role: 'PROVIDER', city: 'Mississauga', province: 'ON', services: ['Snow Shovelling', 'Lawn Mowing'] },
+      role: 'PROVIDER', city: 'Mississauga', province: 'ON', services: ['Snow Shovelling', 'Lawn Mowing'], avgRating: null, reviewCount: 0 },
     { id: 5,  firstName: 'Aisha',   lastName: 'Malik',    email: 'aisha@test.com',   phoneNumber: '4165558888',
-      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Babysitting'] },
+      role: 'PROVIDER', city: 'Toronto',     province: 'ON', services: ['Babysitting'], avgRating: null, reviewCount: 0 },
     { id: 6,  firstName: 'Jordan',  lastName: 'Lee',      email: 'jordan@test.com',  phoneNumber: '6135559090',
-      role: 'PROVIDER', city: 'Ottawa',      province: 'ON', services: ['Snow Shovelling', 'Lawn Mowing'] },
+      role: 'PROVIDER', city: 'Ottawa',      province: 'ON', services: ['Snow Shovelling', 'Lawn Mowing'], avgRating: null, reviewCount: 0 },
     { id: 7,  firstName: 'Sophie',  lastName: 'Tremblay', email: 'sophie@test.com',  phoneNumber: '5145557777',
-      role: 'PROVIDER', city: 'Montreal',    province: 'QC', services: ['Tutoring', 'Babysitting'] },
+      role: 'PROVIDER', city: 'Montreal',    province: 'QC', services: ['Tutoring', 'Babysitting'], avgRating: null, reviewCount: 0 },
     { id: 8,  firstName: 'Liam',    lastName: "O'Brien",  email: 'liam@test.com',    phoneNumber: '4035556543',
-      role: 'PROVIDER', city: 'Calgary',     province: 'AB', services: ['Snow Shovelling'] },
+      role: 'PROVIDER', city: 'Calgary',     province: 'AB', services: ['Snow Shovelling'], avgRating: null, reviewCount: 0 },
     { id: 9,  firstName: 'Nina',    lastName: 'Patel',    email: 'nina@test.com',    phoneNumber: '6047771234',
-      role: 'PROVIDER', city: 'Vancouver',   province: 'BC', services: ['Lawn Mowing', 'Babysitting'] },
+      role: 'PROVIDER', city: 'Vancouver',   province: 'BC', services: ['Lawn Mowing', 'Babysitting'], avgRating: null, reviewCount: 0 },
     { id: 10, firstName: 'Ethan',   lastName: 'Campbell', email: 'ethan@test.com',   phoneNumber: '2045559876',
-      role: 'PROVIDER', city: 'Winnipeg',    province: 'MB', services: ['Tutoring', 'Snow Shovelling'] },
+      role: 'PROVIDER', city: 'Winnipeg',    province: 'MB', services: ['Tutoring', 'Snow Shovelling'], avgRating: null, reviewCount: 0 },
     { id: 11, firstName: 'Olivia',  lastName: 'Chen',     email: 'olivia@test.com',  phoneNumber: '9055551111',
-      role: 'PROVIDER', city: 'Hamilton',    province: 'ON', services: ['Lawn Mowing', 'Tutoring'] },
+      role: 'PROVIDER', city: 'Hamilton',    province: 'ON', services: ['Lawn Mowing', 'Tutoring'], avgRating: null, reviewCount: 0 },
     { id: 12, firstName: 'Hassan',  lastName: 'Ali',      email: 'hassan@test.com',  phoneNumber: '7805552468',
-      role: 'PROVIDER', city: 'Edmonton',    province: 'AB', services: ['Snow Shovelling', 'Lawn Mowing', 'Babysitting'] },
+      role: 'PROVIDER', city: 'Edmonton',    province: 'AB', services: ['Snow Shovelling', 'Lawn Mowing', 'Babysitting'], avgRating: null, reviewCount: 0 },
   ];
 
   constructor(private http: HttpClient) {}
@@ -65,7 +67,7 @@ export class SearchService {
   getProviders(
     service?: string,
     city?:    string,
-    sort:     SortColumn = 'created_at',
+    sort:     SortColumn = 'avgRating',
     order:    SortOrder  = 'DESC',
     page:     number     = 1,
     limit:    number     = 6
@@ -90,7 +92,7 @@ export class SearchService {
   private mockPage(
     service?: string,
     city?:    string,
-    sort:     SortColumn = 'created_at',
+    sort:     SortColumn = 'avgRating',
     order:    SortOrder  = 'DESC',
     page:     number     = 1,
     limit:    number     = 6
@@ -102,12 +104,24 @@ export class SearchService {
     });
 
     // Sort
-    results = [...results].sort((a, b) => {
-      const valA = sort === 'first_name' ? a.firstName : sort === 'city' ? a.city : String(a.id);
-      const valB = sort === 'first_name' ? b.firstName : sort === 'city' ? b.city : String(b.id);
-      return valA.localeCompare(valB);
-    });
-    if (order === 'DESC') results.reverse();
+    if (sort === 'avgRating') {
+      // Unrated providers always sink to the bottom, regardless of direction
+      results = [...results].sort((a, b) => {
+        const ratedA = a.avgRating ?? -1;
+        const ratedB = b.avgRating ?? -1;
+        if ((a.avgRating == null) !== (b.avgRating == null)) {
+          return a.avgRating == null ? 1 : -1;
+        }
+        return order === 'ASC' ? ratedA - ratedB : ratedB - ratedA;
+      });
+    } else {
+      results = [...results].sort((a, b) => {
+        const valA = sort === 'first_name' ? a.firstName : sort === 'city' ? a.city : String(a.id);
+        const valB = sort === 'first_name' ? b.firstName : sort === 'city' ? b.city : String(b.id);
+        return valA.localeCompare(valB);
+      });
+      if (order === 'DESC') results.reverse();
+    }
 
     const total      = results.length;
     const totalPages = Math.max(1, Math.ceil(total / limit));
