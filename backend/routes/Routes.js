@@ -7,17 +7,19 @@ const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { requireRole, checkBlocked } = require('../middleware/roles');
 const { authLimiter } = require('../middleware/rateLimit');
-const { validateRegister, validateLogin, validateCreateBooking, validateBookingStatus, validateAddService, validateBlockUser } = require('../middleware/validators');
+const { validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent, validateBookingStatus, validateAddService, validateBlockUser } = require('../middleware/validators');
 
 // Controllers
 const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
 const { listUsers, getUserById, toggleBlock, deleteUser, getStats, getAuditLogs } = require('../controllers/adminController');
 const { getMyServices, addService, removeService, getAvailableServices } = require('../controllers/providerController');
 const { createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
+const { createPaymentIntent, confirmPayment } = require('../controllers/paymentController');
 
 // ── Public routes (no token needed) ──────────────────────────────────────────
 router.post('/register', authLimiter, validateRegister, registerUser);
 router.post('/login',    authLimiter, validateLogin, loginUser);
+
 
 // ── Authenticated routes (any logged-in user) ───────────────────────────────
 router.get('/profile',   authMiddleware, checkBlocked, getProfile);
@@ -29,10 +31,12 @@ router.post('/provider/my-services',             authMiddleware, checkBlocked, r
 router.delete('/provider/my-services/:serviceId', authMiddleware, checkBlocked, requireRole('PROVIDER'), removeService);
 router.get('/provider/available-services',       authMiddleware, checkBlocked, requireRole('PROVIDER'), getAvailableServices);
 
-// ── Booking routes (REQUESTER + PROVIDER + ADMIN) ───────────────────────────
+// ──    routes (REQUESTER + PROVIDER + ADMIN) ───────────────────────────
 router.post('/bookings',              authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreateBooking, createBooking);
 router.get('/bookings/my',            authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getMyBookings);
 router.patch('/bookings/:id/status',  authMiddleware, checkBlocked, requireRole('PROVIDER', 'REQUESTER', 'ADMIN'), validateBookingStatus, updateBookingStatus);
+router.post( '/payments/create-intent', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreatePaymentIntent, createPaymentIntent);
+router.post('/payments/confirm', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), confirmPayment);
 
 // ── Admin routes ────────────────────────────────────────────────────────────
 router.get('/admin/users',              authMiddleware, checkBlocked, requireRole('ADMIN'), listUsers);

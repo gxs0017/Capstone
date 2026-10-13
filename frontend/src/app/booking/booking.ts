@@ -29,9 +29,14 @@ interface BookingProvider {
     CommonModule,
     ReactiveFormsModule,
     RouterLink,
-    MatCard, MatCardContent, MatCardActions,
-    MatButton, MatIcon, MatDivider,
-    MatFormFieldModule, MatInput,
+    MatCard,
+    MatCardContent,
+    MatCardActions,
+    MatButton,
+    MatIcon,
+    MatDivider,
+    MatFormFieldModule,
+    MatInput,
     MatProgressSpinner,
     MatRadioModule,
   ],
@@ -39,34 +44,43 @@ interface BookingProvider {
   styleUrl: './booking.css',
 })
 export class BookingComponent implements OnInit {
+
   private router = inject(Router);
   private bookingService = inject(BookingService);
 
   provider = signal<BookingProvider | null>(null);
-  service  = signal<string>('');
+  service = signal<string>('');
   serviceId = signal<number>(0);
 
   scheduledDate = new FormControl('');
-  notes         = new FormControl('');
+  notes = new FormControl('');
   paymentMethod = new FormControl('pay_on_arrival');
 
-  loading    = signal(false);
-  confirmed  = signal(false);
+  loading = signal(false);
+  confirmed = signal(false);
   bookingRef = signal('');
-  errorMsg   = signal('');
+  errorMsg = signal('');
 
-  // Contact details expansion
   showContact = signal(false);
 
   ngOnInit(): void {
-    const state = history.state as { provider: BookingProvider; service: string; serviceId: number } | undefined;
+
+    const state = history.state as {
+      provider: BookingProvider;
+      service: string;
+      serviceId: number;
+    } | undefined;
 
     if (state?.provider && state?.service) {
+
       this.provider.set(state.provider);
       this.service.set(state.service);
       this.serviceId.set(state.serviceId || 0);
+
     } else {
+
       this.router.navigate(['/search']);
+
     }
   }
 
@@ -75,12 +89,22 @@ export class BookingComponent implements OnInit {
   }
 
   getServiceIcon(svc: string): string {
+
     switch (svc) {
-      case 'Snow Shovelling': return 'ac_unit';
-      case 'Babysitting':     return 'child_care';
-      case 'Tutoring':        return 'school';
-      case 'Lawn Mowing':     return 'yard';
-      default:                return 'handyman';
+      case 'Snow Shovelling':
+        return 'ac_unit';
+
+      case 'Babysitting':
+        return 'child_care';
+
+      case 'Tutoring':
+        return 'school';
+
+      case 'Lawn Mowing':
+        return 'yard';
+
+      default:
+        return 'handyman';
     }
   }
 
@@ -89,8 +113,12 @@ export class BookingComponent implements OnInit {
   }
 
   confirmBooking(): void {
+
     const prov = this.provider();
-    if (!prov) return;
+
+    if (!prov) {
+      return;
+    }
 
     this.loading.set(true);
     this.errorMsg.set('');
@@ -101,14 +129,40 @@ export class BookingComponent implements OnInit {
       scheduledDate: this.scheduledDate.value || undefined,
       notes: this.notes.value || undefined,
     }).subscribe({
+
       next: (res) => {
+
         this.loading.set(false);
+
+        // Pay Online selected -> go directly to Stripe
+        if (this.paymentMethod.value === 'online') {
+
+          this.router.navigate([
+            '/payment',
+            res.bookingId
+          ]);
+
+          return;
+        }
+
+        // Pay on Arrival -> show normal booking confirmation
         this.confirmed.set(true);
-        this.bookingRef.set('NBK-' + String(res.bookingId).padStart(6, '0'));
+
+        this.bookingRef.set(
+          'NBK-' +
+          String(res.bookingId).padStart(6, '0')
+        );
       },
+
       error: (err) => {
+
         this.loading.set(false);
-        this.errorMsg.set(err?.error?.message || 'Failed to create booking. Please try again.');
+
+        this.errorMsg.set(
+          err?.error?.message ||
+          'Failed to create booking. Please try again.'
+        );
+
       },
     });
   }

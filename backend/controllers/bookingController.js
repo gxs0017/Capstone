@@ -73,31 +73,34 @@ const getMyBookings = async (req, res) => {
             whereClause = 'b.requester_id = ?';
         }
 
-        const [rows] = await pool.execute(
-            `SELECT
-                b.booking_id,
-                b.status,
-                b.scheduled_date,
-                b.notes,
-                b.booking_date,
-                s.service_name,
-                prov.user_id   AS provider_id,
-                prov.first_name AS provider_first_name,
-                prov.last_name  AS provider_last_name,
-                prov.city       AS provider_city,
-                prov.province   AS provider_province,
-                req.user_id    AS requester_id,
-                req.first_name AS requester_first_name,
-                req.last_name  AS requester_last_name
-             FROM bookings b
-             JOIN provider_details pd ON b.provider_detail_id = pd.provider_detail_id
-             JOIN users prov ON pd.user_id = prov.user_id
-             JOIN users req  ON b.requester_id = req.user_id
-             JOIN services s ON b.service_id = s.service_id
-             WHERE ${whereClause}
-             ORDER BY b.booking_date DESC`,
-            [userId]
-        );
+    const [rows] = await pool.execute(
+    `SELECT
+           b.booking_id,
+          b.status,
+          b.payment_status,
+          b.payment_method,
+          b.stripe_payment_intent_id,
+          b.scheduled_date,
+          b.notes,
+          b.booking_date,
+          s.service_name,
+          prov.user_id   AS provider_id,
+          prov.first_name AS provider_first_name,
+          prov.last_name  AS provider_last_name,
+          prov.city       AS provider_city,
+          prov.province   AS provider_province,
+          req.user_id    AS requester_id,
+          req.first_name AS requester_first_name,
+           req.last_name  AS requester_last_name
+          FROM bookings b
+          JOIN provider_details pd ON b.provider_detail_id = pd.provider_detail_id
+          JOIN users prov ON pd.user_id = prov.user_id
+         JOIN users req  ON b.requester_id = req.user_id
+          JOIN services s ON b.service_id = s.service_id
+         WHERE ${whereClause}
+         ORDER BY b.booking_date DESC`,
+        [userId]
+);
 
         return res.json(toBookingDTOList(rows));
     } catch (err) {
@@ -143,8 +146,7 @@ const updateBookingStatus = async (req, res) => {
         // Requesters can only cancel
         if (isRequester && status !== 'CANCELLED') {
             return res.status(403).json({ message: 'You can only cancel your own bookings.' });
-        }
-
+        }  
         await pool.execute(
             'UPDATE bookings SET status = ? WHERE booking_id = ?',
             [status, req.params.id]

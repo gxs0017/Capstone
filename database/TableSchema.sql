@@ -74,6 +74,9 @@ CREATE TABLE bookings (
     scheduled_date     DATE         DEFAULT NULL,
     notes              TEXT         DEFAULT NULL,
     booking_date       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    payment_status ENUM('UNPAID', 'PAID', 'FAILED') NOT NULL DEFAULT 'UNPAID',
+    payment_method VARCHAR(20) DEFAULT NULL,
+    stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
     FOREIGN KEY (provider_detail_id) REFERENCES provider_details(provider_detail_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (requester_id)       REFERENCES users(user_id)                       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (service_id)         REFERENCES services(service_id)                 ON DELETE CASCADE ON UPDATE CASCADE

@@ -1,0 +1,57 @@
+.payment-page {
+  display: flex;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.payment-card {
+  width: min(100%, 560px);
+}
+
+.back-link {
+  margin-bottom: 16px;
+}
+
+
+.amount {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.pay-button {
+  width: 100%;
+  margin-top: 24px;
+}
+
+.state-center {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 32px 0;
+}
+
+.error-message,
+.success-message {
+  border-radius: 8px;
+  margin: 16px 0;
+  padding: 14px;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #b3261e;
+}
+
+.success-message {
+  align-items: flex-start;
+  background: #e8f5e9;
+  color: #146c2e;
+  display: flex;
+  gap: 10px;
+}
+
+.success-message p {
+  margin: 4px 0 0;
+}
+

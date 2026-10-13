@@ -63,7 +63,7 @@ All seeded users share the password **`pass123`**:
 
 
 ## .env File format:
-# Backend environment variables.
+# Backend environment variables .
 # Copy this file to ".env" in the same folder and fill in real values.
 # The real .env is gitignored — never commit it.
 

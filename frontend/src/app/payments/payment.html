@@ -1,0 +1,79 @@
+<!-- Created by Broinson Jeyarajah -->
+<!-- Student Number: 91568803 -->
+
+<!-- -------REFERENCES USED--------- -->
+<!-- https://ngx-stripe.dev/docs/payment-element -->
+<!-- https://docs.stripe.com/payments/payment-element -->
+<!-- https://angular.dev/guide/templates/control-flow -->
+<!-- https://material.angular.dev/components/button/overview -->
+<!-- Previous course/lecture material – Angular Mobile Web-based Applications/Hybrid Mobile Web -->
+
+
+<div class="payment-page">
+  <mat-card class="payment-card">
+    <mat-card-content>
+
+      <a mat-button routerLink="/my-bookings" class="back-link">
+        <mat-icon>arrow_back</mat-icon>Back to My Bookings </a>
+
+      <h1>Secure Payment</h1>
+
+      @if (loading()) {
+        <div class="state-center">
+          <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+          <p>Loading Payment Form...</p>
+        </div>
+      }
+
+
+      @if (success()) {
+        <div class="success-message">
+          <mat-icon>check_circle</mat-icon>
+          <div>
+            <p>Your payment was accepted</p>
+          </div>
+        </div>
+
+        <a mat-raised-button color="primary" routerLink="/my-bookings">
+          Return to My Bookings
+        </a>
+      }
+
+      @if (error()) {
+          <div class="error-message">{{    error()   }}
+      </div>
+      }
+
+     
+      @if (!loading() && !success() && elementsOptions.clientSecret) {
+        <div class="amount">
+          Service Fee: ${{ (amount() / 100).toFixed(2) }} CAD
+        </div>
+
+        <ngx-stripe-elements
+          [stripe]="stripe"
+          [elementsOptions]="elementsOptions">
+       
+          <ngx-stripe-payment />
+        </ngx-stripe-elements>
+
+        <button
+          mat-raised-button
+          color="primary"
+          class="pay-button"
+          [disabled]="PaymentPROCESSING()"
+          (click)="pay()">
+
+
+          <!-- Checking if payment was accepted or not -->
+          @if (PaymentPROCESSING()) {
+            Processsing Payment....
+          } 
+          @else {
+             Pay Safely Please
+          }
+      </button>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

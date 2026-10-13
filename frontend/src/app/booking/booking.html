@@ -79,12 +79,12 @@
                   </div>
                 </div>
               </mat-radio-button>
-              <mat-radio-button value="online" class="payment-radio" disabled>
+              <mat-radio-button value="online" class="payment-radio">
                 <div class="payment-option">
                   <mat-icon class="payment-icon">credit_card</mat-icon>
                   <div>
                     <span class="payment-title">Pay Online</span>
-                    <span class="payment-desc">Coming soon — Stripe / PayPal integration</span>
+                    <span class="payment-desc">Pay securely online with Stripe</span>
                   </div>
                 </div>
               </mat-radio-button>
@@ -133,7 +133,13 @@
               </div>
               <div class="confirm-row">
                 <span class="confirm-label">Payment</span>
-                <span class="confirm-value">Pay on Arrival</span>
+                <span class="confirm-value">
+                  @if (paymentMethod.value === 'online') {
+                         Pay Online (Stripe)
+                  } @else {
+                           Pay on Arrival
+                          }
+                </span>
               </div>
               <div class="confirm-row">
                 <span class="confirm-label">Status</span>
