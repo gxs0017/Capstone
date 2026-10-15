@@ -6,6 +6,7 @@ const helmet  = require('helmet');
 const pool    = require('./config/db');
 const Routes  = require('./routes/Routes');
 const { globalLimiter } = require('./middleware/rateLimit');
+const { startExpiryJob } = require('./utils/bookingExpiry');
 
 const app  = express();
 app.set('trust proxy', 1); // trust host proxy (Render) so rate limiting sees real client IPs
@@ -32,6 +33,7 @@ pool.getConnection()
         console.log('MySQL connected successfully');
         conn.release();
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        startExpiryJob();
     })
     .catch(err => {
         console.error('MySQL connection failed:', err.message);

@@ -54,6 +54,7 @@ memory.md
 .clinerules
 .cline/
 .vscode/cline*
+.claude/CLAUDE.local.md
 
 # Environment Variables
 .env

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../core/api.config';
+import { Booking } from './booking.service';
 
 export interface AdminUser {
   id: number;
@@ -9,6 +10,7 @@ export interface AdminUser {
   lastName: string;
   email: string;
   phoneNumber: string;
+  street: string;
   city: string;
   province: string;
   postalCode: string;
@@ -20,6 +22,17 @@ export interface AdminUser {
 
 export interface AdminUserPage {
   data: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export type AdminUserUpdate = Partial<Pick<AdminUser,
+  'firstName' | 'lastName' | 'email' | 'phoneNumber' | 'street' | 'city' | 'province' | 'postalCode'>>;
+
+export interface AdminBookingPage {
+  data: Booking[];
   total: number;
   page: number;
   limit: number;
@@ -51,12 +64,33 @@ export class AdminService {
     return this.http.get<AdminUserPage>(`${this.API}/users`, { params });
   }
 
+  updateUser(userId: number, changes: AdminUserUpdate): Observable<AdminUser> {
+    return this.http.patch<AdminUser>(`${this.API}/users/${userId}`, changes);
+  }
+
   toggleBlock(userId: number, blocked: boolean): Observable<any> {
     return this.http.patch(`${this.API}/users/${userId}/block`, { blocked });
   }
 
   deleteUser(userId: number): Observable<any> {
     return this.http.delete(`${this.API}/users/${userId}`);
+  }
+
+  getBookings(status?: string, search?: string, page = 1, limit = 10): Observable<AdminBookingPage> {
+    let params = new HttpParams()
+      .set('page', String(page))
+      .set('limit', String(limit));
+    if (status) params = params.set('status', status);
+    if (search) params = params.set('search', search);
+    return this.http.get<AdminBookingPage>(`${this.API}/bookings`, { params });
+  }
+
+  /** Admins can cancel any active booking at any time (no cutoff). Uses the shared status endpoint. */
+  cancelBooking(bookingId: number, reason?: string): Observable<{ message: string; refunded: boolean }> {
+    return this.http.patch<{ message: string; refunded: boolean }>(
+      `${this.API.replace('/admin', '')}/bookings/${bookingId}/status`,
+      { status: 'CANCELLED', reason: reason || undefined },
+    );
   }
 
   getStats(): Observable<DashboardStats> {

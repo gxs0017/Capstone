@@ -7,6 +7,8 @@ import { ProfileComponent } from './profile/profile';
 import { BookingComponent } from './booking/booking';
 import { AdminComponent } from './admin/admin';
 import { MyBookingsComponent } from './my-bookings/my-bookings';
+import { ReviewComponent } from './review/review';
+import { AvailabilityComponent } from './availability/availability';
 import { authGuard, roleGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -19,6 +21,8 @@ export const routes: Routes = [
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
   { path: 'my-bookings', component: MyBookingsComponent, canActivate: [roleGuard('REQUESTER', 'PROVIDER')] },
   { path: 'requests', component: MyBookingsComponent, canActivate: [roleGuard('PROVIDER')], data: { requestsView: true } },
+  { path: 'review/:id', component: ReviewComponent, canActivate: [roleGuard('REQUESTER')] },
+  { path: 'availability', component: AvailabilityComponent, canActivate: [roleGuard('PROVIDER')] },
   { path: 'admin', component: AdminComponent, canActivate: [roleGuard('ADMIN')] },
   { path: '**', redirectTo: 'home' },
 ];

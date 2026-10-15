@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 // General limiter ( applies to the whole API. )
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 15, // max requests per IP 
+    max: 300, // max requests per IP per window 
     standardHeaders: true,
     legacyHeaders: false,
     message: { message: 'Too many requests. Please try again later.' },

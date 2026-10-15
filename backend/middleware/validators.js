@@ -36,14 +36,17 @@ const validateLogin = [
 const validateCreateBooking = [
     body('providerId').isInt({ min: 1 }).withMessage('providerId must be a positive integer.'),
     body('serviceId').isInt({ min: 1 }).withMessage('serviceId must be a positive integer.'),
-    body('scheduledDate').optional({ nullable: true }).isISO8601().withMessage('scheduledDate must be a valid date.'),
+    body('scheduledDate').optional({ nullable: true }).matches(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/).withMessage('scheduledDate must be in "YYYY-MM-DD HH:mm:ss" format.'),
+    body('bookingType').optional().isIn(['ONE_TIME', 'RECURRING']).withMessage('bookingType must be ONE_TIME or RECURRING.'),
+    body('sessions').optional({ nullable: true }).isInt({ min: 1, max: 52 }).withMessage('sessions must be a whole number.'),
     body('notes').optional({ nullable: true }).isString().isLength({ max: 500 }).withMessage('Notes must be under 500 characters.'),
     handleValidation,
 ];
 
 const validateBookingStatus = [
     param('id').isInt({ min: 1 }).withMessage('Invalid booking id.'),
-    body('status').isIn(['CONFIRMED', 'CANCELLED']).withMessage('Status must be CONFIRMED or CANCELLED.'),
+    body('status').isIn(['CONFIRMED', 'DECLINED', 'CANCELLED', 'COMPLETED']).withMessage('Status must be CONFIRMED, DECLINED, CANCELLED, or COMPLETED.'),
+    body('reason').optional({ nullable: true }).isString().isLength({ max: 255 }).withMessage('Reason must be under 255 characters.'),
     handleValidation,
 ];
 

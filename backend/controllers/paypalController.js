@@ -8,7 +8,7 @@ const paypal = require('../services/paypal');
 // Fetch a booking plus the provider's price for its service.
 async function getBooking(bookingId) {
     const [rows] = await pool.execute(
-        `SELECT b.booking_id, b.requester_id, b.payment_status, b.paypal_order_id, pd.price
+        `SELECT b.booking_id, b.requester_id, b.payment_status, b.paypal_order_id, COALESCE(b.price, pd.price) AS price
          FROM bookings b
          JOIN provider_details pd ON b.provider_detail_id = pd.provider_detail_id
          WHERE b.booking_id = ?`,

@@ -54,6 +54,20 @@
 
   <mat-divider class="section-divider"></mat-divider>
 
+  <div class="admin-tabs">
+    <button mat-stroked-button [class.tab-active]="tab() === 'users'" (click)="tab.set('users')">
+      <mat-icon>people</mat-icon> Users
+    </button>
+    <button mat-stroked-button [class.tab-active]="tab() === 'bookings'" (click)="tab.set('bookings')">
+      <mat-icon>event_note</mat-icon> Bookings
+    </button>
+  </div>
+
+  @if (tab() === 'bookings') {
+    <app-admin-bookings (changed)="loadStats()"></app-admin-bookings>
+  }
+
+  @if (tab() === 'users') {
   <!-- User Management -->
   <h2 class="section-title">User Management</h2>
 
@@ -132,6 +146,9 @@
                 @if (actionLoading() === user.id) {
                   <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
                 } @else {
+                  <button mat-icon-button matTooltip="Edit profile" (click)="startEdit(user)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
                   <button mat-icon-button
                           [matTooltip]="user.isBlocked ? 'Unblock user' : 'Block user'"
                           (click)="toggleBlock(user)"
@@ -147,6 +164,26 @@
                 }
               </div>
             </mat-card-content>
+
+            @if (editingId() === user.id) {
+              <form class="edit-form" [formGroup]="editForm" (ngSubmit)="saveEdit(user)">
+                @for (f of editFields; track f.name) {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ f.label }}</mat-label>
+                    <input matInput [formControlName]="f.name" [type]="f.name === 'email' ? 'email' : 'text'" />
+                    @if (editForm.get(f.name)?.invalid) {
+                      <mat-error>{{ f.name === 'email' && editForm.get(f.name)?.value ? 'Enter a valid email' : 'Required' }}</mat-error>
+                    }
+                  </mat-form-field>
+                }
+                <div class="edit-actions">
+                  <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+                  <button mat-raised-button color="primary" type="submit" [disabled]="saving()">
+                    {{ saving() ? 'Saving…' : 'Save changes' }}
+                  </button>
+                </div>
+              </form>
+            }
           </mat-card>
         }
       </div>
@@ -191,5 +228,6 @@
         </div>
       }
     }
+  }
   }
 </div>

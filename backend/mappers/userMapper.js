@@ -9,7 +9,7 @@
 // - Easy to test: pure functions, no side effects.
 // - Prevents accidental data leaks (password hash never leaves the mapper).
 
-const { ProviderDTO, RequesterDTO, AdminUserDTO, ProfileDTO, BookingDTO } = require('../dtos/UserDTO');
+const { ProviderDTO, RequesterDTO, AdminUserDTO, ProfileDTO, BookingDTO, ReviewDTO, AvailabilityDTO } = require('../dtos/UserDTO');
 
 // ── Single-entity mappers ────────────────────────────────────────────────────
 
@@ -18,12 +18,16 @@ const toRequesterDTO  = (user)                => RequesterDTO(user);
 const toAdminUserDTO  = (user)                => AdminUserDTO(user);
 const toProfileDTO    = (user, services = []) => ProfileDTO(user, services);
 const toBookingDTO    = (row)                 => BookingDTO(row);
+const toReviewDTO     = (row)                 => ReviewDTO(row);
+const toAvailabilityDTO = (row)               => AvailabilityDTO(row);
 
 // ── Collection mappers ───────────────────────────────────────────────────────
 
 const toProviderDTOList  = (users)    => users.map(u => toProviderDTO(u, u.services || []));
 const toAdminUserDTOList = (users)    => users.map(u => toAdminUserDTO(u));
 const toBookingDTOList   = (rows)     => rows.map(r => toBookingDTO(r));
+const toReviewDTOList    = (rows)     => rows.map(r => toReviewDTO(r));
+const toAvailabilityDTOList = (rows)  => rows.map(r => toAvailabilityDTO(r));
 
 // ── Role-aware profile mapper ────────────────────────────────────────────────
 // Picks the right DTO based on the user's role, similar to how you'd use
@@ -47,8 +51,12 @@ module.exports = {
     toAdminUserDTO,
     toProfileDTO,
     toBookingDTO,
+    toReviewDTO,
+    toAvailabilityDTO,
     toProviderDTOList,
     toAdminUserDTOList,
     toBookingDTOList,
+    toReviewDTOList,
+    toAvailabilityDTOList,
     toRoleBasedProfile,
 };

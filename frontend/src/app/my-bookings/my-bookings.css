@@ -129,6 +129,21 @@
   color: #991b1b;
 }
 
+.status-declined {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.status-completed {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.status-expired {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 .card-divider {
   margin: 16px 0;
 }
@@ -213,4 +228,32 @@
 .card-actions {
   padding: 8px 16px 16px !important;
   gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+  padding: 1px 8px;
+  margin-left: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.chip-recurring {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.chip-icon {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.cutoff-note {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  align-self: center;
 }

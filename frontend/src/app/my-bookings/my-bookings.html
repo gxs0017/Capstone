@@ -43,6 +43,12 @@
                     <div class="service-name">{{ booking.service }}</div>
                     <div class="booking-date">
                       Booked: {{ booking.bookingDate | date:'mediumDate' }}
+                      @if (booking.bookingType === 'RECURRING') {
+                        <span class="chip chip-recurring">
+                          <mat-icon class="chip-icon">repeat</mat-icon>
+                          Session {{ booking.sessionNumber }} of {{ booking.sessionsInBatch }}
+                        </span>
+                      }
                     </div>
                   </div>
                 </div>
@@ -86,7 +92,46 @@
                     <mat-icon class="detail-icon">event</mat-icon>
                     <div>
                       <span class="detail-label">Scheduled</span>
-                      <span class="detail-value">{{ booking.scheduledDate | date:'mediumDate' }}</span>
+                      <span class="detail-value">{{ booking.scheduledDate | date:'medium' }}</span>
+                    </div>
+                  </div>
+                }
+
+                @if (booking.price !== null) {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">payments</mat-icon>
+                    <div>
+                      <span class="detail-label">Price</span>
+                      <span class="detail-value">
+                        {{ booking.price | currency }}
+                        @if (booking.discountPercent > 0) { ({{ booking.discountPercent }}% pack discount) }
+                        &middot;
+                        @switch (booking.paymentStatus) {
+                          @case ('PAID') { Paid upfront }
+                          @case ('REFUNDED') { Refunded }
+                          @default { Pay on arrival }
+                        }
+                      </span>
+                    </div>
+                  </div>
+                }
+
+                @if (booking.status === 'DECLINED') {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">block</mat-icon>
+                    <div>
+                      <span class="detail-label">Declined by provider</span>
+                      <span class="detail-value">{{ booking.declineReason || 'No reason given.' }}</span>
+                    </div>
+                  </div>
+                }
+
+                @if (booking.status === 'EXPIRED') {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">timer_off</mat-icon>
+                    <div>
+                      <span class="detail-label">Expired</span>
+                      <span class="detail-value">This request was not accepted in time.@if (booking.paymentStatus === 'REFUNDED') { Your prepaid session was refunded. }</span>
                     </div>
                   </div>
                 }
@@ -116,6 +161,16 @@
                     </div>
                   </div>
                 }
+
+                @if (booking.status === 'COMPLETED' && booking.review) {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">star</mat-icon>
+                    <div>
+                      <span class="detail-label">Your Review</span>
+                      <span class="detail-value">{{ booking.review.rating }} / 5@if (booking.review.comment) { — {{ booking.review.comment }} }</span>
+                    </div>
+                  </div>
+                }
               </div>
             </mat-card-content>
 
@@ -127,13 +182,36 @@
                 } @else {
                   @if (isRequestsView()) {
                     <button mat-raised-button color="primary" (click)="confirmBooking(booking)">
-                      <mat-icon>check</mat-icon> Confirm
+                      <mat-icon>check</mat-icon> Accept
                     </button>
+                    <button mat-stroked-button color="warn" (click)="declineBooking(booking)">
+                      <mat-icon>block</mat-icon> Decline
+                    </button>
+                  } @else {
+                    <ng-container *ngTemplateOutlet="cancelBtn; context: { $implicit: booking }"></ng-container>
                   }
-                  <button mat-stroked-button color="warn" (click)="cancelBooking(booking)">
-                    <mat-icon>close</mat-icon> Cancel
+                }
+              </mat-card-actions>
+            }
+
+            @if (booking.status === 'CONFIRMED') {
+              <mat-card-actions align="end" class="card-actions">
+                @if (actionLoading() === booking.bookingId) {
+                  <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                } @else {
+                  <ng-container *ngTemplateOutlet="cancelBtn; context: { $implicit: booking }"></ng-container>
+                  <button mat-raised-button color="accent" (click)="completeBooking(booking)">
+                    <mat-icon>task_alt</mat-icon> Mark as Completed
                   </button>
                 }
+              </mat-card-actions>
+            }
+
+            @if (booking.status === 'COMPLETED' && !isRequestsView() && !booking.review) {
+              <mat-card-actions align="end" class="card-actions">
+                <button mat-stroked-button color="primary" (click)="leaveReview(booking)">
+                  <mat-icon>rate_review</mat-icon> Leave a Review
+                </button>
               </mat-card-actions>
             }
           </mat-card>
@@ -142,3 +220,13 @@
     }
   }
 </div>
+
+<!-- Cancel button: disabled with an explanation once inside the cutoff window -->
+<ng-template #cancelBtn let-booking>
+  <button mat-stroked-button color="warn" [disabled]="!booking.canCancel" (click)="cancelBooking(booking)">
+    <mat-icon>close</mat-icon> Cancel
+  </button>
+  @if (!booking.canCancel) {
+    <span class="cutoff-note">Within 24h of start, cannot cancel</span>
+  }
+</ng-template>

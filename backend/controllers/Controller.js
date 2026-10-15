@@ -104,6 +104,10 @@ const loginUser = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials.' });
         }
 
+        if (user.deleted_at) {
+            return res.status(400).json({ message: 'Invalid credentials.' });
+        }
+
         // Blocked check
         if (user.is_blocked) {
             return res.status(403).json({ message: 'Your account is restricted. Please contact support for assistance.' });
@@ -171,7 +175,7 @@ const getProviders = async (req, res) => {
         const result = await User.getProviders(
             service || null,
             city    || null,
-            sort    || 'created_at',
+            sort    || 'avgRating',
             order   || 'DESC',
             page    || 1,
             limit   || 6

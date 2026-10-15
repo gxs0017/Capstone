@@ -53,10 +53,31 @@
           <!-- Booking details form -->
           <p class="section-label">Booking Details</p>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Preferred Date</mat-label>
-            <input type="date" matInput [formControl]="scheduledDate" />
-          </mat-form-field>
+          @if (availability().length > 0) {
+            <div class="availability-hint">
+              <mat-icon class="availability-icon">event_available</mat-icon>
+              <span>{{ getAvailabilityLabel() }}</span>
+            </div>
+          }
+
+          <div class="datetime-row">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Preferred Date</mat-label>
+              <input matInput [matDatepicker]="picker" [formControl]="scheduledDate"
+                     [matDatepickerFilter]="dateFilter" [min]="minDate"
+                     (click)="picker.open()" readonly />
+              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Preferred Time</mat-label>
+              <input matInput [matTimepicker]="timePicker" [formControl]="scheduledTime"
+                     [matTimepickerMin]="timeMin()" [matTimepickerMax]="timeMax()" />
+              <mat-timepicker-toggle matIconSuffix [for]="timePicker"></mat-timepicker-toggle>
+              <mat-timepicker #timePicker interval="30m"></mat-timepicker>
+            </mat-form-field>
+          </div>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Notes for the provider</mat-label>
@@ -66,30 +87,126 @@
 
           <mat-divider class="divider"></mat-divider>
 
+          <!-- Booking type: one-time vs prepaid weekly pack -->
+          <p class="section-label">Booking Type</p>
+          <mat-radio-group [formControl]="bookingType" class="type-options">
+            <mat-radio-button value="ONE_TIME" class="type-card">
+              <div class="type-body">
+                <span class="payment-title">One-time</span>
+                <span class="payment-desc">Single session, pay on arrival</span>
+              </div>
+              @if (oneTimeQuote(); as q) {
+                <span class="type-price">{{ q.total | currency }}</span>
+              }
+            </mat-radio-button>
+            <mat-radio-button value="RECURRING" class="type-card">
+              <div class="type-body">
+                <span class="payment-title">
+                  Weekly pack
+                  @if (recurringQuote(); as q) {
+                    <span class="discount-chip">Save {{ q.discountPercent }}%</span>
+                  }
+                </span>
+                <span class="payment-desc">Same day &amp; time every week, paid upfront</span>
+              </div>
+              @if (recurringQuote(); as q) {
+                <span class="type-price">
+                  {{ q.perSessionPrice | currency }}<small> / session</small>
+                </span>
+              }
+            </mat-radio-button>
+          </mat-radio-group>
+
+          @if (isRecurring()) {
+            <mat-form-field appearance="outline" class="half-width sessions-field">
+              <mat-label>Number of sessions</mat-label>
+              <mat-select [formControl]="sessions">
+                @for (n of recurringQuote()?.sessionOptions ?? [4, 8]; track n) {
+                  <mat-option [value]="n">{{ n }} weekly sessions</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            @if (recurringDates().length > 0) {
+              <div class="recurring-dates">
+                <mat-icon class="availability-icon">repeat</mat-icon>
+                <span>
+                  @for (d of recurringDates(); track $index) {
+                    <span class="date-pill">{{ d | date:'MMM d' }}</span>
+                  }
+                  at {{ recurringDates()[0] | date:'shortTime' }}
+                </span>
+              </div>
+            }
+          }
+
+          <!-- Price summary -->
+          @if (quote(); as q) {
+            <div class="price-summary">
+              <div class="price-row">
+                <span>{{ q.sessions }} × {{ q.basePrice | currency }}</span>
+                <span>{{ q.fullPriceTotal | currency }}</span>
+              </div>
+              @if (q.discountPercent > 0) {
+                <div class="price-row savings">
+                  <span>Weekly pack discount ({{ q.discountPercent }}%)</span>
+                  <span>−{{ q.savings | currency }}</span>
+                </div>
+              }
+              <div class="price-row total">
+                <span>{{ isRecurring() ? 'Total due now' : 'Total (pay on arrival)' }}</span>
+                <span>{{ q.total | currency }}</span>
+              </div>
+            </div>
+
+            <!-- Booking policy, driven by the backend rules -->
+            <p class="policy-note">
+              <mat-icon class="availability-icon">info</mat-icon>
+              <span>
+                Book at least {{ q.minLeadMinutes / 60 }} hour before the start time. Free cancellation until
+                {{ q.cancelCutoffHours }} hours before the start; after that, the booking cannot be cancelled.
+                Requests the provider doesn't accept within {{ q.pendingExpiryHours }} hours expire automatically.
+                @if (isRecurring()) { Cancelled or expired prepaid sessions are refunded. }
+              </span>
+            </p>
+          }
+
+          <mat-divider class="divider"></mat-divider>
+
           <!-- Payment Method -->
           <p class="section-label">Payment Method</p>
-          <div class="payment-options">
-            <mat-radio-group [formControl]="paymentMethod">
-              <mat-radio-button value="pay_on_arrival" class="payment-radio">
-                <div class="payment-option">
-                  <mat-icon class="payment-icon">payments</mat-icon>
-                  <div>
-                    <span class="payment-title">Pay on Arrival</span>
-                    <span class="payment-desc">Pay the provider in person when they arrive</span>
+          @if (isRecurring()) {
+            <div class="payment-option">
+              <mat-icon class="payment-icon">credit_score</mat-icon>
+              <div>
+                <span class="payment-title">Pay Upfront</span>
+                <span class="payment-desc">The whole pack is paid now (demo, no real charge yet)</span>
+              </div>
+            </div>
+          } @else {
+            <div class="payment-options">
+              <mat-radio-group [formControl]="paymentMethod">
+                <mat-radio-button value="pay_on_arrival" class="payment-radio">
+                  <div class="payment-option">
+                    <mat-icon class="payment-icon">payments</mat-icon>
+                    <div>
+                      <span class="payment-title">Pay on Arrival</span>
+                      <span class="payment-desc">Pay the provider in person when they arrive</span>
+                    </div>
                   </div>
-                </div>
-              </mat-radio-button>
-              <mat-radio-button value="online" class="payment-radio">
-                <div class="payment-option">
-                  <mat-icon class="payment-icon">credit_card</mat-icon>
-                  <div>
-                    <span class="payment-title">Pay Online</span>
-                    <span class="payment-desc">Pay securely with PayPal</span>
+                </mat-radio-button>
+                <mat-radio-button value="online" class="payment-radio">
+                  <div class="payment-option">
+                    <mat-icon class="payment-icon">credit_card</mat-icon>
+                    <div>
+                      <span class="payment-title">Pay Online</span>
+                      <span class="payment-desc">Pay securely with PayPal</span>
+                    </div>
                   </div>
-                </div>
-              </mat-radio-button>
-            </mat-radio-group>
-          </div>
+                </mat-radio-button>
+              </mat-radio-group>
+            </div>
+          }
 
         </mat-card-content>
 
@@ -150,10 +267,25 @@
                 <span class="confirm-label">Provider</span>
                 <span class="confirm-value">{{ provider()!.firstName }} {{ provider()!.lastName }}</span>
               </div>
+              @if (scheduledDateTime()) {
+                <div class="confirm-row">
+                  <span class="confirm-label">Scheduled</span>
+                  <span class="confirm-value">{{ scheduledDateTime() | date:'medium' }}</span>
+                </div>
+              }
               <div class="confirm-row">
                 <span class="confirm-label">Payment</span>
-                <span class="confirm-value">{{ paid() ? 'Paid with PayPal' : 'Pay on Arrival' }}</span>
+                <span class="confirm-value">
+                  {{ confirmedType() === 'RECURRING' ? 'Paid upfront' : (paid() ? 'Paid with PayPal' : 'Pay on Arrival') }}
+                  @if (confirmedQuote(); as q) { · {{ q.total | currency }} }
+                </span>
               </div>
+              @if (confirmedType() === 'RECURRING') {
+                <div class="confirm-row">
+                  <span class="confirm-label">Sessions</span>
+                  <span class="confirm-value">{{ recurringDates().length }} weekly</span>
+                </div>
+              }
               <div class="confirm-row">
                 <span class="confirm-label">Status</span>
                 @if (paid()) {

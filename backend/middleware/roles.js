@@ -35,11 +35,11 @@ const requireRole = (...allowedRoles) => {
 const checkBlocked = async (req, res, next) => {
     try {
         const [rows] = await pool.execute(
-            'SELECT is_blocked FROM users WHERE user_id = ?',
+            'SELECT is_blocked, deleted_at FROM users WHERE user_id = ?',
             [req.user.id]
         );
 
-        if (rows.length === 0) {
+        if (rows.length === 0 || rows[0].deleted_at) {
             return res.status(404).json({ message: 'Account not found.' });
         }
 

@@ -44,6 +44,7 @@ const AdminUserDTO = (user) => ({
     lastName:    user.last_name  ?? user.lastName,
     email:       user.email,
     phoneNumber: user.phone_number ?? user.phoneNumber,
+    street:      user.street,
     city:        user.city,
     province:    user.province,
     postalCode:  user.postal_code ?? user.postalCode,
@@ -87,6 +88,22 @@ const BookingDTO = (row) => ({
     notes:         row.notes,
     bookingDate:   row.booking_date,
     service:       row.service_name,
+    bookingType:   row.booking_type,
+    batchId:       row.batch_id,
+    sessionNumber: row.session_number,
+    sessionsInBatch: row.sessions_in_batch,
+    price:         row.price === null || row.price === undefined ? null : Number(row.price),
+    discountPercent: row.discount_percent,
+    paymentStatus: row.payment_status,
+    declineReason: row.decline_reason,
+    canCancel:     !!row.can_cancel,
+    cancelDeadline: row.cancel_deadline ?? null,
+    cancellation:  row.cancelled_at ? {
+        at:     row.cancelled_at,
+        reason: row.cancel_reason ?? null,
+        by:     row.cancelled_by_name ?? null,
+        byRole: row.cancelled_by_role ?? null,
+    } : null,
     provider: {
         id:        row.provider_id,
         firstName: row.provider_first_name,
@@ -99,6 +116,38 @@ const BookingDTO = (row) => ({
         firstName: row.requester_first_name,
         lastName:  row.requester_last_name,
     },
+    review: row.review_id ? {
+        reviewId: row.review_id,
+        rating:   row.review_rating,
+        comment:  row.review_comment,
+    } : null,
 });
 
-module.exports = { ProviderDTO, RequesterDTO, AdminUserDTO, ProfileDTO, BookingDTO };
+/**
+ * Review DTO — a requester's rating/comment left against a completed booking.
+ */
+const ReviewDTO = (row) => ({
+    reviewId:    row.review_id,
+    bookingId:   row.booking_id,
+    rating:      row.rating,
+    comment:     row.comment,
+    createdAt:   row.created_at,
+    requester: {
+        id:        row.requester_id,
+        firstName: row.requester_first_name,
+        lastName:  row.requester_last_name,
+    },
+});
+
+/**
+ * Availability DTO — one recurring weekly window a provider is bookable in.
+ * Feeds the booking page's calendar (selectable days/times).
+ */
+const AvailabilityDTO = (row) => ({
+    id:        row.availability_id,
+    dayOfWeek: row.day_of_week,
+    startTime: row.start_time,
+    endTime:   row.end_time,
+});
+
+module.exports = { ProviderDTO, RequesterDTO, AdminUserDTO, ProfileDTO, BookingDTO, ReviewDTO, AvailabilityDTO };
