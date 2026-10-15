@@ -14,6 +14,7 @@ const { registerUser, loginUser, getProfile, getProviders } = require('../contro
 const { listUsers, getUserById, toggleBlock, deleteUser, getStats, getAuditLogs } = require('../controllers/adminController');
 const { getMyServices, addService, removeService, getAvailableServices, updatePrice } = require('../controllers/providerController');
 const { createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
+const { createOrder: paypalCreateOrder, capture: paypalCapture, config: paypalConfig } = require('../controllers/paypalController');
 
 // ── Public routes (no token needed) ──────────────────────────────────────────
 router.post('/register', authLimiter, validateRegister, registerUser);
@@ -34,6 +35,11 @@ router.get('/provider/available-services',       authMiddleware, checkBlocked, r
 router.post('/bookings',              authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreateBooking, createBooking);
 router.get('/bookings/my',            authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getMyBookings);
 router.patch('/bookings/:id/status',  authMiddleware, checkBlocked, requireRole('PROVIDER', 'REQUESTER', 'ADMIN'), validateBookingStatus, updateBookingStatus);
+
+// -- PayPal payment routes (additive; separate from the Stripe work) --
+router.get('/payments/paypal/config', authMiddleware, paypalConfig);
+router.post('/payments/paypal/create-order', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), paypalCreateOrder);
+router.post('/payments/paypal/capture', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), paypalCapture);
 
 // ── Admin routes ────────────────────────────────────────────────────────────
 router.get('/admin/users',              authMiddleware, checkBlocked, requireRole('ADMIN'), listUsers);

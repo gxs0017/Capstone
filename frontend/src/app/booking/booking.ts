@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, NgZone } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatCard, MatCardContent, MatCardActions } from '@angular/material/card';
 import { MatButton } from '@angular/material/button';
@@ -11,6 +11,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BookingService } from '../services/booking.service';
+import { PaymentService } from '../services/payment.service';
 
 interface BookingProvider {
   id: number;
@@ -41,6 +42,8 @@ interface BookingProvider {
 export class BookingComponent implements OnInit {
   private router = inject(Router);
   private bookingService = inject(BookingService);
+  private paymentService = inject(PaymentService);
+  private zone = inject(NgZone);
 
   provider = signal<BookingProvider | null>(null);
   service  = signal<string>('');
@@ -54,6 +57,12 @@ export class BookingComponent implements OnInit {
   confirmed  = signal(false);
   bookingRef = signal('');
   errorMsg   = signal('');
+
+  // PayPal payment state
+  bookingId    = signal<number | null>(null);
+  showPayment  = signal(false);
+  paid         = signal(false);
+  paymentError = signal('');
 
   // Contact details expansion
   showContact = signal(false);
@@ -103,13 +112,38 @@ export class BookingComponent implements OnInit {
     }).subscribe({
       next: (res) => {
         this.loading.set(false);
-        this.confirmed.set(true);
+        this.bookingId.set(res.bookingId);
         this.bookingRef.set('NBK-' + String(res.bookingId).padStart(6, '0'));
+        if (this.paymentMethod.value === 'online') {
+          this.showPayment.set(true);
+          setTimeout(() => this.renderPaypal(res.bookingId), 0);
+        } else {
+          this.confirmed.set(true);
+        }
       },
       error: (err) => {
         this.loading.set(false);
         this.errorMsg.set(err?.error?.message || 'Failed to create booking. Please try again.');
       },
     });
+  }
+
+  async renderPaypal(bookingId: number): Promise<void> {
+    try {
+      const cfg = await this.paymentService.getConfig();
+      if (!cfg.clientId) { this.paymentError.set('PayPal is not configured.'); return; }
+      const paypal = await this.paymentService.loadSdk(cfg.clientId);
+      paypal.Buttons({
+        createOrder: async () => (await this.paymentService.createOrder(bookingId)).orderId,
+        onApprove: async () => {
+          await this.paymentService.capture(bookingId);
+          this.zone.run(() => { this.paid.set(true); this.showPayment.set(false); this.confirmed.set(true); });
+        },
+        onCancel: () => this.zone.run(() => this.paymentError.set('Payment cancelled \u2014 you can try again.')),
+        onError: () => this.zone.run(() => this.paymentError.set('Payment error. Please try again.')),
+      }).render('#paypal-button-container');
+    } catch (e) {
+      this.zone.run(() => this.paymentError.set('Could not load PayPal.'));
+    }
   }
 }
