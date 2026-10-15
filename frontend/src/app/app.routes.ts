@@ -10,11 +10,13 @@ import { MyBookingsComponent } from './my-bookings/my-bookings';
 import { ReviewComponent } from './review/review';
 import { AvailabilityComponent } from './availability/availability';
 import { authGuard, roleGuard } from './guards/auth.guard';
+import { PaymentComponent } from './payments/payment';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: 'home', component: HomeComponent },
   { path: 'login', component: LoginComponent },
+  { path: 'payment/:bookingId', component: PaymentComponent, canActivate: [roleGuard('REQUESTER')] },
   { path: 'register', component: RegisterComponent },
   { path: 'search', component: SearchComponent },
   { path: 'booking', component: BookingComponent, canActivate: [authGuard] },

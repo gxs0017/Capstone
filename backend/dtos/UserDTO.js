@@ -84,6 +84,7 @@ const BookingDTO = (row) => ({
     paymentStatus: row.payment_status,
     paymentMethod: row.payment_method,
     amount:        row.amount != null ? Number(row.amount) : null,
+    paymentIntentId: row.stripe_payment_intent_id ?? null,
     scheduledDate: row.scheduled_date,
     notes:         row.notes,
     bookingDate:   row.booking_date,

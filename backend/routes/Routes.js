@@ -7,13 +7,14 @@ const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { requireRole, checkBlocked } = require('../middleware/roles');
 const { authLimiter } = require('../middleware/rateLimit');
-const { validateRegister, validateLogin, validateCreateBooking, validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice } = require('../middleware/validators');
+const { validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent, validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice } = require('../middleware/validators');
 
 // Controllers
 const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
 const { listUsers, getUserById, updateUser, toggleBlock, deleteUser, getStats, listBookings, getAuditLogs } = require('../controllers/adminController');
 const { getMyServices, addService, removeService, getAvailableServices, updatePrice } = require('../controllers/providerController');
 const { getQuote, createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
+const { createPaymentIntent, confirmPayment } = require('../controllers/paymentController');
 const { createOrder: paypalCreateOrder, capture: paypalCapture, config: paypalConfig } = require('../controllers/paypalController');
 const { submitReview, getReviewsForProvider } = require('../controllers/reviewController');
 const { getProviderAvailability, getMyAvailability, addAvailability, removeAvailability } = require('../controllers/availabilityController');
@@ -21,6 +22,7 @@ const { getProviderAvailability, getMyAvailability, addAvailability, removeAvail
 // ── Public routes (no token needed) ──────────────────────────────────────────
 router.post('/register', authLimiter, validateRegister, registerUser);
 router.post('/login',    authLimiter, validateLogin, loginUser);
+
 
 // ── Authenticated routes (any logged-in user) ───────────────────────────────
 router.get('/profile',   authMiddleware, checkBlocked, getProfile);
@@ -42,6 +44,8 @@ router.get('/bookings/quote',         authMiddleware, checkBlocked, requireRole(
 router.post('/bookings',              authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreateBooking, createBooking);
 router.get('/bookings/my',            authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getMyBookings);
 router.patch('/bookings/:id/status',  authMiddleware, checkBlocked, requireRole('PROVIDER', 'REQUESTER', 'ADMIN'), validateBookingStatus, updateBookingStatus);
+router.post( '/payments/create-intent', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreatePaymentIntent, createPaymentIntent);
+router.post('/payments/confirm', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), confirmPayment);
 
 // -- PayPal payment routes  --
 router.get('/payments/paypal/config', authMiddleware, paypalConfig);

@@ -195,12 +195,21 @@
                     </div>
                   </div>
                 </mat-radio-button>
-                <mat-radio-button value="online" class="payment-radio">
+                <mat-radio-button value="paypal" class="payment-radio">
+                  <div class="payment-option">
+                    <mat-icon class="payment-icon">account_balance_wallet</mat-icon>
+                    <div>
+                      <span class="payment-title">Pay Online &mdash; PayPal</span>
+                      <span class="payment-desc">Pay securely with PayPal</span>
+                    </div>
+                  </div>
+                </mat-radio-button>
+                <mat-radio-button value="stripe" class="payment-radio">
                   <div class="payment-option">
                     <mat-icon class="payment-icon">credit_card</mat-icon>
                     <div>
-                      <span class="payment-title">Pay Online</span>
-                      <span class="payment-desc">Pay securely with PayPal</span>
+                      <span class="payment-title">Pay Online &mdash; Card</span>
+                      <span class="payment-desc">Pay by credit or debit card with Stripe</span>
                     </div>
                   </div>
                 </mat-radio-button>

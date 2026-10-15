@@ -56,6 +56,7 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
   styleUrl: './booking.css',
 })
 export class BookingComponent implements OnInit {
+
   private router = inject(Router);
   private bookingService = inject(BookingService);
   private paymentService = inject(PaymentService);
@@ -103,7 +104,6 @@ export class BookingComponent implements OnInit {
   paid         = signal(false);
   paymentError = signal('');
 
-  // Contact details expansion
   showContact = signal(false);
 
   ngOnInit(): void {
@@ -112,12 +112,14 @@ export class BookingComponent implements OnInit {
       | undefined;
 
     if (state?.provider && state?.service) {
+
       this.provider.set(state.provider);
       this.service.set(state.service);
       this.serviceId.set(state.serviceId || 0);
       this.loadAvailability(state.provider.id);
       this.loadQuotes();
     } else {
+
       this.router.navigate(['/search']);
       return;
     }
@@ -279,6 +281,7 @@ export class BookingComponent implements OnInit {
   }
 
   getServiceIcon(svc: string): string {
+
     switch (svc) {
       case 'Snow Shovelling':
         return 'ac_unit';
@@ -315,8 +318,12 @@ export class BookingComponent implements OnInit {
   }
 
   confirmBooking(): void {
+
     const prov = this.provider();
-    if (!prov) return;
+
+    if (!prov) {
+      return;
+    }
 
     if (this.availability().length > 0 && (!this.scheduledDate.value || !this.scheduledTime.value)) {
       this.errorMsg.set('Please pick an available date and time before confirming.');
@@ -366,9 +373,12 @@ export class BookingComponent implements OnInit {
             this.scheduledDateTime.set(combined);
           }
           // PayPal is for single bookings; recurring packs are prepaid as a mock payment.
-          if (this.paymentMethod.value === 'online' && !this.isRecurring()) {
+          if (this.paymentMethod.value === 'paypal' && !this.isRecurring()) {
             this.showPayment.set(true);
             setTimeout(() => this.renderPaypal(res.bookingId), 0);
+          } else if (this.paymentMethod.value === 'stripe' && !this.isRecurring()) {
+            // Card payments happen on the dedicated Stripe payment page
+            this.router.navigate(['/payment', res.bookingId]);
           } else {
             this.confirmed.set(true);
           }

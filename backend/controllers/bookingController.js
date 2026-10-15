@@ -239,6 +239,7 @@ const getMyBookings = async (req, res) => {
                 b.status,
                 b.payment_method,
                 b.amount,
+                b.stripe_payment_intent_id,
                 b.scheduled_date,
                 b.notes,
                 b.booking_date,

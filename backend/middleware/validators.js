@@ -43,6 +43,12 @@ const validateCreateBooking = [
     handleValidation,
 ];
 
+const validateCreatePaymentIntent = [
+    body('bookingId').isInt({ min: 1 }).withMessage('bookingId must be a positive integer.'),
+    handleValidation,
+];
+
+
 const validateBookingStatus = [
     param('id').isInt({ min: 1 }).withMessage('Invalid booking id.'),
     body('status').isIn(['CONFIRMED', 'DECLINED', 'CANCELLED', 'COMPLETED']).withMessage('Status must be CONFIRMED, DECLINED, CANCELLED, or COMPLETED.'),
@@ -69,6 +75,6 @@ const validateBlockUser = [
 ];
 
 module.exports = {
-    validateRegister, validateLogin, validateCreateBooking,
+    validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent,
     validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice,
 };

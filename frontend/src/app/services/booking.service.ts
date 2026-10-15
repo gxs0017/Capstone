@@ -12,6 +12,7 @@ export interface Booking {
   status: BookingStatus;
   paymentMethod: string | null;
   amount: number | null;
+  paymentIntentId: string | null;
   scheduledDate: string | null;
   notes: string | null;
   bookingDate: string;
