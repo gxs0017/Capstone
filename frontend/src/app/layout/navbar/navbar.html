@@ -56,6 +56,12 @@
           <span>Requests</span>
         </button>
       }
+      @if (authService.isRequester() || authService.isProvider()) {
+        <button mat-menu-item routerLink="/inbox">
+          <mat-icon>forum</mat-icon>
+          <span>Inbox</span>
+        </button>
+      }
       @if (authService.isAdmin()) {
         <button mat-menu-item routerLink="/admin">
           <mat-icon>admin_panel_settings</mat-icon>

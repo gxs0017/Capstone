@@ -143,7 +143,21 @@
 .person-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+}
+
+/* Left side of the person row: avatar + name/location */
+.person-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Message button sits on the opposite side of the row */
+.message-btn {
+  flex-shrink: 0;
 }
 
 .person-avatar {

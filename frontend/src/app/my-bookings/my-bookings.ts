@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { MatCard, MatCardContent, MatCardActions } from '@angular/material/card';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
@@ -8,6 +8,7 @@ import { MatDivider } from '@angular/material/divider';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BookingService, Booking } from '../services/booking.service';
+import { ChatService } from '../services/chat';
 import { AuthService } from '../services/auth.service';
 
 @Component({
@@ -28,13 +29,18 @@ import { AuthService } from '../services/auth.service';
 })
 export class MyBookingsComponent implements OnInit {
   private bookingService = inject(BookingService);
+  private chatService = inject(ChatService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   authService = inject(AuthService);
 
   bookings = signal<Booking[]>([]);
   loading  = signal(false);
   actionLoading = signal<number | null>(null);
   message  = signal('');
+
+  /** bookingId whose "Message" button is currently working, for a per-card spinner. */
+  messagingLoading = signal<number | null>(null);
 
   /** True when viewing incoming requests (provider /requests route) */
   isRequestsView = signal(false);
@@ -83,6 +89,35 @@ export class MyBookingsComponent implements OnInit {
         setTimeout(() => this.message.set(''), 3000);
       },
       error: () => this.actionLoading.set(null),
+    });
+  }
+
+  /**
+   * Start (or open the existing) conversation with the other party on this booking,
+   * then navigate to the inbox with that conversation pre-selected.
+   * The backend dedupes, so an existing chat is reused rather than duplicated.
+   */
+  messageUser(booking: Booking): void {
+    if (this.messagingLoading() !== null) return;
+
+    // The "other" user depends on which side we're viewing from.
+    const otherUserId = this.isRequestsView()
+      ? booking.requester.id
+      : booking.provider.id;
+
+    this.messagingLoading.set(booking.bookingId);
+    this.chatService.startConversation(otherUserId, booking.bookingId).subscribe({
+      next: (conversation) => {
+        this.messagingLoading.set(null);
+        this.router.navigate(['/inbox'], {
+          queryParams: { conversation: conversation.conversation_id },
+        });
+      },
+      error: () => {
+        this.messagingLoading.set(null);
+        this.message.set('Could not open the conversation. Please try again.');
+        setTimeout(() => this.message.set(''), 3000);
+      },
     });
   }
 

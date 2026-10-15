@@ -60,24 +60,44 @@
                 <!-- Provider / Requester -->
                 @if (!isRequestsView()) {
                   <div class="person-row">
-                    <div class="person-avatar">
-                      {{ getInitials(booking.provider.firstName, booking.provider.lastName) }}
+                    <div class="person-main">
+                      <div class="person-avatar">
+                        {{ getInitials(booking.provider.firstName, booking.provider.lastName) }}
+                      </div>
+                      <div>
+                        <span class="person-label">Provider</span>
+                        <span class="person-name">{{ booking.provider.firstName }} {{ booking.provider.lastName }}</span>
+                        <span class="person-location">{{ booking.provider.city }}, {{ booking.provider.province }}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span class="person-label">Provider</span>
-                      <span class="person-name">{{ booking.provider.firstName }} {{ booking.provider.lastName }}</span>
-                      <span class="person-location">{{ booking.provider.city }}, {{ booking.provider.province }}</span>
-                    </div>
+
+                    @if (messagingLoading() === booking.bookingId) {
+                      <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                    } @else {
+                      <button mat-stroked-button color="primary" class="message-btn" (click)="messageUser(booking)">
+                        <mat-icon>chat</mat-icon> Message
+                      </button>
+                    }
                   </div>
                 } @else {
                   <div class="person-row">
-                    <div class="person-avatar">
-                      {{ getInitials(booking.requester.firstName, booking.requester.lastName) }}
+                    <div class="person-main">
+                      <div class="person-avatar">
+                        {{ getInitials(booking.requester.firstName, booking.requester.lastName) }}
+                      </div>
+                      <div>
+                        <span class="person-label">Requester</span>
+                        <span class="person-name">{{ booking.requester.firstName }} {{ booking.requester.lastName }}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span class="person-label">Requester</span>
-                      <span class="person-name">{{ booking.requester.firstName }} {{ booking.requester.lastName }}</span>
-                    </div>
+
+                    @if (messagingLoading() === booking.bookingId) {
+                      <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                    } @else {
+                      <button mat-stroked-button color="primary" class="message-btn" (click)="messageUser(booking)">
+                        <mat-icon>chat</mat-icon> Message
+                      </button>
+                    }
                   </div>
                 }
 

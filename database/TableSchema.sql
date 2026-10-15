@@ -78,3 +78,46 @@ CREATE TABLE bookings (
     FOREIGN KEY (requester_id)       REFERENCES users(user_id)                       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (service_id)         REFERENCES services(service_id)                 ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+-- ----------------------------------------------------------------
+-- Conversations TABLE
+-- its gonna link the service provider and the user that booked them onto a chatroom 
+-- a link will also be makde that links chats to specific bookings
+-- if there are any deletions it will keep that chat history but remove the link to the conversation 
+-- ----------------------------------------------------------------
+
+CREATE TABLE conversations (
+    conversation_id INT AUTO_INCREMENT PRIMARY KEY,
+    participant_one_id INT NOT NULL, 
+    participant_two_id INT NOT NULL, 
+    booking_id INT DEFAULT NULL,     
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (participant_one_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (participant_two_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- ----------------------------------------------------------------
+-- Messages TABLE
+-- This is for the messages sent by the users to each other 
+-- It links the messages to whick chatroom/conversation it belongs to
+-- it also links the messages to who sent them
+-- ----------------------------------------------------------------
+
+CREATE TABLE messages (
+    message_id INT AUTO_INCREMENT PRIMARY KEY,
+    conversation_id INT NOT NULL,
+    sender_id INT NOT NULL,
+    content TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- ----------------------------------------------------------------
+-- These indexs are to make sure that when a user goes to thier inbox, it loads all the conversations theyve had
+-- ----------------------------------------------------------------
+CREATE INDEX idx_conversations_participants ON conversations(participant_one_id, participant_two_id);
+CREATE INDEX idx_messages_conversation ON messages(conversation_id, created_at);

@@ -1,0 +1,127 @@
+<div class="inbox-page">
+  <!-- ── Left pane: conversation list ─────────────────────────────── -->
+  <aside class="conversation-list">
+    <header class="pane-header">
+      <mat-icon>forum</mat-icon>
+      <h2>Messages</h2>
+    </header>
+
+    @if (loadingConversations()) {
+      <div class="centered">
+        <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
+      </div>
+    } @else if (conversationsError()) {
+      <div class="empty-state error-state">
+        <mat-icon>cloud_off</mat-icon>
+        <p>Couldn't load conversations</p>
+        <span>Check your connection and try again.</span>
+        <button mat-stroked-button type="button" (click)="loadConversations()">
+          <mat-icon>refresh</mat-icon> Retry
+        </button>
+      </div>
+    } @else if (conversations().length === 0) {
+      <div class="empty-state">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <p>No conversations yet.</p>
+        <span>When you message a provider or requester, it will show up here.</span>
+      </div>
+    } @else {
+      <ul class="convo-items">
+        @for (convo of conversations(); track trackByConversation($index, convo)) {
+          <li
+            class="convo-item"
+            [class.active]="selected()?.conversation_id === convo.conversation_id"
+            (click)="selectConversation(convo)"
+          >
+            <div class="avatar">{{ initialsFor(convo) }}</div>
+            <div class="convo-meta">
+              <span class="convo-name">{{ otherParticipantName(convo) }}</span>
+              <span class="convo-sub">
+                {{ convo.booking_id ? 'Booking chat' : 'Direct message' }}
+              </span>
+            </div>
+            @if ((convo.unread_count ?? 0) > 0) {
+              <span class="unread-badge" aria-label="Unread messages">
+                {{ convo.unread_count }}
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </aside>
+
+  <!-- ── Right pane: active thread ────────────────────────────────── -->
+  <section class="thread">
+    @if (!selected()) {
+      <div class="empty-state thread-empty">
+        <mat-icon>mark_unread_chat_alt</mat-icon>
+        <p>Select a conversation</p>
+        <span>Pick someone on the left to see your messages.</span>
+      </div>
+    } @else {
+      <header class="thread-header">
+        <div class="avatar small">{{ initialsFor(selected()!) }}</div>
+        <h3>{{ otherParticipantName(selected()!) }}</h3>
+      </header>
+
+      <div class="messages">
+        @if (loadingMessages()) {
+          <div class="centered">
+            <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+          </div>
+        } @else if (messagesError()) {
+          <div class="empty-state error-state">
+            <mat-icon>cloud_off</mat-icon>
+            <p>Couldn't load this conversation</p>
+            <button mat-stroked-button type="button" (click)="retryMessages()">
+              <mat-icon>refresh</mat-icon> Retry
+            </button>
+          </div>
+        } @else if (messages().length === 0) {
+          <div class="empty-state">
+            <mat-icon>waving_hand</mat-icon>
+            <p>No messages yet</p>
+            <span>Say hello to start the conversation.</span>
+          </div>
+        } @else {
+          @for (msg of messages(); track trackByMessage($index, msg)) {
+            <div class="bubble-row" [class.mine]="isMine(msg)">
+              <div class="bubble">
+                <p class="bubble-text">{{ msg.content }}</p>
+                <span class="bubble-time">{{ msg.created_at | date: 'MMM d, h:mm a' }}</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <form class="composer" (ngSubmit)="send()">
+        <mat-form-field appearance="outline" class="composer-field">
+          <mat-label>Type a message</mat-label>
+          <textarea
+            matInput
+            name="draft"
+            [(ngModel)]="draft"
+            [disabled]="sending()"
+            cdkTextareaAutosize
+            cdkAutosizeMinRows="1"
+            cdkAutosizeMaxRows="5"
+            (keydown.enter)="onEnter($event)"
+            autocomplete="off"
+          ></textarea>
+        </mat-form-field>
+        <button
+          mat-icon-button
+          color="primary"
+          type="submit"
+          class="send-btn"
+          [disabled]="!draft.trim() || sending()"
+          aria-label="Send message"
+        >
+          <mat-icon>send</mat-icon>
+        </button>
+      </form>
+    }
+  </section>
+</div>
