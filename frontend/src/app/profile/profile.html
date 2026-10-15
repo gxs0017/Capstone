@@ -73,6 +73,8 @@
                     <div class="service-row">
                       <mat-icon class="service-item-icon">{{ getServiceIcon(svc.service_name) }}</mat-icon>
                       <span class="service-name">{{ svc.service_name }}</span>
+            <span class="price-prefix">$</span>
+            <input type="number" class="price-input" min="0" step="0.01" [value]="svc.price ?? ''" #priceInput (blur)="setPrice(svc, priceInput.value)" [disabled]="serviceLoading()" placeholder="0.00" />
                       <button mat-icon-button
                               color="warn"
                               matTooltip="Remove service"
@@ -96,6 +98,7 @@
                       }
                     </mat-select>
                   </mat-form-field>
+                  <input type="number" class="add-price-input" min="0" step="0.01" [formControl]="priceToAdd" placeholder="Price $" />
                   <button mat-raised-button color="primary"
                           (click)="addService()"
                           [disabled]="!serviceToAdd.value || serviceLoading()">

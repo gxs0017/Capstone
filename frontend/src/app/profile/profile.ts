@@ -41,6 +41,7 @@ export class ProfileComponent implements OnInit {
   availableServices = signal<ServiceItem[]>([]);
   addableServices  = signal<ServiceItem[]>([]); // available minus already-added
   serviceToAdd     = new FormControl<number | null>(null);
+  priceToAdd       = new FormControl<number | null>(null);
   serviceLoading   = signal(false);
   serviceMessage   = signal('');
 
@@ -108,11 +109,12 @@ export class ProfileComponent implements OnInit {
     this.serviceLoading.set(true);
     this.serviceMessage.set('');
 
-    this.providerService.addService(svc.service_name).subscribe({
+    this.providerService.addService(svc.service_name, this.priceToAdd.value).subscribe({
       next: () => {
         this.serviceLoading.set(false);
         this.serviceMessage.set(`"${svc.service_name}" added!`);
         this.serviceToAdd.reset();
+        this.priceToAdd.reset();
         this.loadMyServices();
         this.authService.refreshProfile().subscribe();
         setTimeout(() => this.serviceMessage.set(''), 3000);
@@ -140,6 +142,25 @@ export class ProfileComponent implements OnInit {
       error: () => {
         this.serviceLoading.set(false);
         this.serviceMessage.set('Failed to remove service.');
+      },
+    });
+  }
+
+  setPrice(svc: ServiceItem, value: string): void {
+    const price = parseFloat(value);
+    if (isNaN(price) || price < 0 || price === svc.price) return;
+    this.serviceLoading.set(true);
+    this.serviceMessage.set('');
+    this.providerService.updatePrice(svc.service_id, price).subscribe({
+      next: () => {
+        this.serviceLoading.set(false);
+        this.serviceMessage.set(`Price for "${svc.service_name}" updated.`);
+        this.loadMyServices();
+        setTimeout(() => this.serviceMessage.set(''), 3000);
+      },
+      error: (err) => {
+        this.serviceLoading.set(false);
+        this.serviceMessage.set(err?.error?.message || 'Failed to update price.');
       },
     });
   }

@@ -7,12 +7,12 @@ const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { requireRole, checkBlocked } = require('../middleware/roles');
 const { authLimiter } = require('../middleware/rateLimit');
-const { validateRegister, validateLogin, validateCreateBooking, validateBookingStatus, validateAddService, validateBlockUser } = require('../middleware/validators');
+const { validateRegister, validateLogin, validateCreateBooking, validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice } = require('../middleware/validators');
 
 // Controllers
 const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
 const { listUsers, getUserById, toggleBlock, deleteUser, getStats, getAuditLogs } = require('../controllers/adminController');
-const { getMyServices, addService, removeService, getAvailableServices } = require('../controllers/providerController');
+const { getMyServices, addService, removeService, getAvailableServices, updatePrice } = require('../controllers/providerController');
 const { createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
 
 // ── Public routes (no token needed) ──────────────────────────────────────────
@@ -26,6 +26,7 @@ router.get('/providers',  getProviders);
 // ── Provider routes ─────────────────────────────────────────────────────────
 router.get('/provider/my-services',              authMiddleware, checkBlocked, requireRole('PROVIDER'), getMyServices);
 router.post('/provider/my-services',             authMiddleware, checkBlocked, requireRole('PROVIDER'), validateAddService, addService);
+router.patch('/provider/my-services/:serviceId/price', authMiddleware, checkBlocked, requireRole('PROVIDER'), validateSetPrice, updatePrice);
 router.delete('/provider/my-services/:serviceId', authMiddleware, checkBlocked, requireRole('PROVIDER'), removeService);
 router.get('/provider/available-services',       authMiddleware, checkBlocked, requireRole('PROVIDER'), getAvailableServices);
 
