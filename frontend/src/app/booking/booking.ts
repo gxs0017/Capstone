@@ -136,8 +136,14 @@ export class BookingComponent implements OnInit {
       paypal.Buttons({
         createOrder: async () => (await this.paymentService.createOrder(bookingId)).orderId,
         onApprove: async () => {
-          await this.paymentService.capture(bookingId);
-          this.zone.run(() => { this.paid.set(true); this.showPayment.set(false); this.confirmed.set(true); });
+          try {
+            await this.paymentService.capture(bookingId);
+            this.zone.run(() => { this.paid.set(true); this.showPayment.set(false); this.confirmed.set(true); });
+          } catch (e: any) {
+            this.zone.run(() => this.paymentError.set(
+              e?.error?.message || 'Payment could not be completed. You can try again below.'
+            ));
+          }
         },
         onCancel: () => this.zone.run(() => this.paymentError.set('Payment cancelled \u2014 you can try again.')),
         onError: () => this.zone.run(() => this.paymentError.set('Payment error. Please try again.')),

@@ -77,6 +77,9 @@ const getMyBookings = async (req, res) => {
             `SELECT
                 b.booking_id,
                 b.status,
+                b.payment_status,
+                b.payment_method,
+                b.amount,
                 b.scheduled_date,
                 b.notes,
                 b.booking_date,

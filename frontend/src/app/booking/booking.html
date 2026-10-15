@@ -116,8 +116,14 @@
           <p>Pay securely with PayPal to confirm your booking.</p>
           @if (paymentError()) {
             <div class="error-banner"><mat-icon>error_outline</mat-icon> {{ paymentError() }}</div>
+            <p class="payment-retry-hint">You can try the PayPal button again below, or come back to pay later from My Bookings.</p>
           }
           <div id="paypal-button-container"></div>
+          @if (paymentError()) {
+            <a mat-stroked-button routerLink="/my-bookings" class="skip-payment-link">
+              <mat-icon>event_note</mat-icon> View My Bookings
+            </a>
+          }
         </mat-card-content>
       </mat-card>
     }

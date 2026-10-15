@@ -80,6 +80,9 @@ const ProfileDTO = (user, services = []) => ({
 const BookingDTO = (row) => ({
     bookingId:     row.booking_id,
     status:        row.status,
+    paymentStatus: row.payment_status,
+    paymentMethod: row.payment_method,
+    amount:        row.amount != null ? Number(row.amount) : null,
     scheduledDate: row.scheduled_date,
     notes:         row.notes,
     bookingDate:   row.booking_date,
