@@ -3,14 +3,14 @@
 // Use AFTER authMiddleware so req.user is already populated with { id, email, role }.
 //
 // Usage:
-//   router.get('/admin/users', authMiddleware, requireRole('ADMIN'), handler);
-//   router.post('/bookings',   authMiddleware, requireRole('REQUESTER', 'ADMIN'), handler);
+//   router.get '/admin/users', authMiddleware, requireRole('ADMIN'), handler ;
+//   router.post'/bookings',   authMiddleware, requireRole('REQUESTER', 'ADMIN'), handler 
 
 const pool = require('../config/db');
 
-/**
- * Restrict access to one or more roles.
- * Accepts a spread of role strings: requireRole('ADMIN') or requireRole('PROVIDER', 'ADMIN')
+/*
+  Restrict access to one or more roles.
+ Accepts a spread of role strings: requireRole('ADMIN') or requireRole('PROVIDER', 'ADMIN')
  */
 const requireRole = (...allowedRoles) => {
     return (req, res, next) => {
