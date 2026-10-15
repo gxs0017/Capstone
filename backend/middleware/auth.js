@@ -1,7 +1,7 @@
 // middleware/auth.js
 // Verifies the JWT sent in the Authorization header.
-// Usage: add `authMiddleware` to any route that requires login.
-//   router.get('/protected', authMiddleware, handler)
+// Usage: add authMiddleware to any route that requires login.
+// router.get('/protected', authMiddleware, handler)
 
 const jwt = require('jsonwebtoken');
 

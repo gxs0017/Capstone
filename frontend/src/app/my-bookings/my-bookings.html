@@ -91,6 +91,22 @@
                   </div>
                 }
 
+                @if (booking.paymentMethod === 'paypal') {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">account_balance_wallet</mat-icon>
+                    <div>
+                      <span class="detail-label">Payment</span>
+                      <span class="detail-value">
+                        <span class="status-badge" [ngClass]="getPaymentStatusClass(booking.paymentStatus)">
+                          <mat-icon class="status-icon">{{ getPaymentStatusIcon(booking.paymentStatus) }}</mat-icon>
+                          {{ booking.paymentStatus }}
+                        </span>
+                        @if (booking.amount != null) { &nbsp;— \${{ booking.amount.toFixed(2) }} }
+                      </span>
+                    </div>
+                  </div>
+                }
+
                 @if (booking.notes) {
                   <div class="detail-row">
                     <mat-icon class="detail-icon">notes</mat-icon>

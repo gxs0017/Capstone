@@ -49,6 +49,13 @@ const validateBookingStatus = [
 
 const validateAddService = [
     body('serviceName').trim().notEmpty().withMessage('serviceName is required.').isLength({ max: 100 }),
+    body('price').optional({ nullable: true }).isFloat({ min: 0, max: 100000 }).withMessage('Price must be a positive number.'),
+    handleValidation,
+];
+
+const validateSetPrice = [
+    param('serviceId').isInt({ min: 1 }).withMessage('Invalid service id.'),
+    body('price').isFloat({ min: 0, max: 100000 }).withMessage('Price must be a positive number.'),
     handleValidation,
 ];
 
@@ -60,5 +67,5 @@ const validateBlockUser = [
 
 module.exports = {
     validateRegister, validateLogin, validateCreateBooking,
-    validateBookingStatus, validateAddService, validateBlockUser,
+    validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice,
 };

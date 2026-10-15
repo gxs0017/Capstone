@@ -6,6 +6,9 @@ import { API_BASE } from '../core/api.config';
 export interface Booking {
   bookingId: number;
   status: string;
+  paymentStatus: string;
+  paymentMethod: string | null;
+  amount: number | null;
   scheduledDate: string | null;
   notes: string | null;
   bookingDate: string;

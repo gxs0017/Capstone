@@ -95,6 +95,22 @@ export class MyBookingsComponent implements OnInit {
     }
   }
 
+  getPaymentStatusClass(paymentStatus: string): string {
+    switch (paymentStatus) {
+      case 'PAID':   return 'status-confirmed';
+      case 'FAILED': return 'status-cancelled';
+      default:       return 'status-pending'; // UNPAID
+    }
+  }
+
+  getPaymentStatusIcon(paymentStatus: string): string {
+    switch (paymentStatus) {
+      case 'PAID':   return 'check_circle';
+      case 'FAILED': return 'error';
+      default:       return 'schedule'; // UNPAID
+    }
+  }
+
   getStatusIcon(status: string): string {
     switch (status) {
       case 'CONFIRMED': return 'check_circle';

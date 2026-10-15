@@ -10,7 +10,7 @@ const User = require('../models/User');
 const getMyServices = async (req, res) => {
     try {
         const [rows] = await pool.execute(
-            `SELECT s.service_id, s.service_name
+            `SELECT s.service_id, s.service_name, pd.price
              FROM provider_details pd
              JOIN services s ON pd.service_id = s.service_id
              WHERE pd.user_id = ?
@@ -30,7 +30,7 @@ const getMyServices = async (req, res) => {
 // ----------------------------------------------------------------
 const addService = async (req, res) => {
     try {
-        const { serviceName } = req.body;
+        const { serviceName, price } = req.body;
         if (!serviceName) {
             return res.status(400).json({ message: 'serviceName is required.' });
         }
@@ -49,11 +49,11 @@ const addService = async (req, res) => {
             return res.status(409).json({ message: 'You already offer this service.' });
         }
 
-        await User.addProviderService(req.user.id, svc.service_id);
+        await User.addProviderService(req.user.id, svc.service_id, price ?? null);
 
         return res.status(201).json({
             message: `Service "${serviceName}" added successfully.`,
-            service: { serviceId: svc.service_id, serviceName },
+            service: { serviceId: svc.service_id, serviceName, price: price ?? null },
         });
     } catch (err) {
         console.error('addService error:', err);
@@ -98,4 +98,21 @@ const getAvailableServices = async (_req, res) => {
     }
 };
 
-module.exports = { getMyServices, addService, removeService, getAvailableServices };
+// ----------------------------------------------------------------
+// PATCH /api/provider/my-services/:serviceId/price - set a service's price
+// ----------------------------------------------------------------
+const updatePrice = async (req, res) => {
+    try {
+        const { price } = req.body;
+        const affected = await User.updateProviderServicePrice(req.user.id, req.params.serviceId, price);
+        if (affected === 0) {
+            return res.status(404).json({ message: 'Service not found in your offerings.' });
+        }
+        return res.json({ message: 'Price updated.' });
+    } catch (err) {
+        console.error('updatePrice error:', err);
+        return res.status(500).json({ message: 'Error updating price.' });
+    }
+};
+
+module.exports = { getMyServices, addService, removeService, getAvailableServices, updatePrice };

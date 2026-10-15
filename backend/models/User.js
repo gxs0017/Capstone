@@ -43,11 +43,19 @@ const findServiceByName = async (serviceName) => {
     return rows[0] || null;
 };
 
-const addProviderService = async (userId, serviceId) => {
+const addProviderService = async (userId, serviceId, price = null) => {
     await pool.execute(
-        'INSERT IGNORE INTO provider_details (user_id, service_id) VALUES (?, ?)',
-        [userId, serviceId]
+        'INSERT IGNORE INTO provider_details (user_id, service_id, price) VALUES (?, ?, ?)',
+        [userId, serviceId, price]
     );
+};
+
+const updateProviderServicePrice = async (userId, serviceId, price) => {
+    const [result] = await pool.execute(
+        'UPDATE provider_details SET price = ? WHERE user_id = ? AND service_id = ?',
+        [price, userId, serviceId]
+    );
+    return result.affectedRows;
 };
 
 // ── Provider search with filtering, sorting, and pagination ───────────────────
@@ -165,5 +173,5 @@ const getServicesByUserId = async (userId) => {
 };
 
 module.exports = { findByEmail, findById, createUser,
-                   findServiceByName, addProviderService, getProviders,
+                   findServiceByName, addProviderService, updateProviderServicePrice, getProviders,
                    getServicesByUserId };
