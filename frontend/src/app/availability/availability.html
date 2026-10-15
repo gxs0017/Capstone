@@ -1,0 +1,87 @@
+<div class="availability-page">
+  <a mat-button class="back-btn" routerLink="/profile">
+    <mat-icon>arrow_back</mat-icon> Back to Profile
+  </a>
+
+  <div class="availability-header">
+    <h1>My Availability</h1>
+    <p>Set the days and time windows you're open for bookings. Requesters will only be able to pick dates and times that match one of these slots.</p>
+  </div>
+
+  @if (errorMsg()) {
+    <div class="error-banner">
+      <mat-icon>error_outline</mat-icon>
+      {{ errorMsg() }}
+    </div>
+  }
+
+  @if (message()) {
+    <div class="message-banner">
+      <mat-icon>check_circle</mat-icon>
+      {{ message() }}
+    </div>
+  }
+
+  <mat-card class="availability-card">
+    <mat-card-content>
+      <p class="section-label">Current Availability</p>
+
+      @if (slots().length === 0) {
+        <p class="empty-text">You haven't set any availability yet. Add a slot below.</p>
+      } @else {
+        <div class="slot-list">
+          @for (slot of slots(); track slot.id) {
+            <div class="slot-row">
+              <mat-icon class="slot-icon">event_available</mat-icon>
+              <span class="slot-day">{{ dayName(slot.dayOfWeek) }}</span>
+              <span class="slot-time">{{ formatTime(slot.startTime) }} – {{ formatTime(slot.endTime) }}</span>
+              <button mat-icon-button
+                      color="warn"
+                      matTooltip="Remove slot"
+                      (click)="removeSlot(slot)"
+                      [disabled]="loading()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <mat-divider class="divider"></mat-divider>
+
+      <p class="section-label">Add a Slot</p>
+      <div class="add-slot-row">
+        <mat-form-field appearance="outline" class="day-field">
+          <mat-label>Day</mat-label>
+          <mat-select [formControl]="dayControl">
+            @for (day of dayOptions; track day.index) {
+              <mat-option [value]="day.index">{{ day.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="time-field">
+          <mat-label>Start Time</mat-label>
+          <input matInput [matTimepicker]="startPicker" [formControl]="startControl" />
+          <mat-timepicker-toggle matIconSuffix [for]="startPicker"></mat-timepicker-toggle>
+          <mat-timepicker #startPicker interval="30m"></mat-timepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="time-field">
+          <mat-label>End Time</mat-label>
+          <input matInput [matTimepicker]="endPicker" [formControl]="endControl" />
+          <mat-timepicker-toggle matIconSuffix [for]="endPicker"></mat-timepicker-toggle>
+          <mat-timepicker #endPicker interval="30m"></mat-timepicker>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" (click)="addSlot()" [disabled]="loading()">
+          <mat-icon>add</mat-icon> Add
+        </button>
+      </div>
+
+      @if (loading()) {
+        <mat-progress-spinner mode="indeterminate" diameter="24" class="inline-spinner"></mat-progress-spinner>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

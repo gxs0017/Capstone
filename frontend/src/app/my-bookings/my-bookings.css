@@ -139,6 +139,11 @@
   color: #3730a3;
 }
 
+.status-expired {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 .card-divider {
   margin: 16px 0;
 }

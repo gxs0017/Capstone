@@ -1,0 +1,78 @@
+<div class="review-page">
+
+  @if (!submitted()) {
+    <div class="review-header">
+      <h1>How did it go?</h1>
+      <p>Your feedback helps other neighbours choose the right provider.</p>
+    </div>
+
+    @if (errorMsg()) {
+      <div class="error-banner">
+        <mat-icon>error_outline</mat-icon>
+        {{ errorMsg() }}
+      </div>
+    }
+
+    <mat-card class="review-card">
+      <mat-card-content>
+
+        @if (booking()) {
+          <div class="booking-summary">
+            <div class="provider-avatar">{{ getInitials(booking()!.provider) }}</div>
+            <div>
+              <p class="summary-service">{{ booking()!.service }}</p>
+              <p class="summary-provider">with {{ booking()!.provider.firstName }} {{ booking()!.provider.lastName }}</p>
+            </div>
+          </div>
+          <mat-divider class="divider"></mat-divider>
+        }
+
+        <p class="section-label">Rating</p>
+        <div class="star-rating">
+          @for (star of [1, 2, 3, 4, 5]; track star) {
+            <mat-icon (click)="setRating(star)" [class.filled]="star <= rating()">
+              {{ star <= rating() ? 'star' : 'star_border' }}
+            </mat-icon>
+          }
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Add a note (optional)</mat-label>
+          <textarea matInput [formControl]="note" rows="4"
+                    placeholder="What stood out about this service?"></textarea>
+        </mat-form-field>
+
+      </mat-card-content>
+
+      <mat-card-actions align="end" class="card-actions">
+        <button mat-stroked-button routerLink="/my-bookings">Skip</button>
+        <button mat-raised-button color="primary"
+                (click)="submit()"
+                [disabled]="rating() === 0 || loading()">
+          @if (loading()) {
+            <mat-progress-spinner mode="indeterminate" diameter="20" class="btn-spinner"></mat-progress-spinner>
+            Submitting...
+          } @else {
+            <mat-icon>send</mat-icon> Submit Review
+          }
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  @if (submitted()) {
+    <div class="confirmation">
+      <mat-card class="confirmation-card">
+        <mat-card-content>
+          <mat-icon class="confirm-icon">check_circle</mat-icon>
+          <h2>Thanks for your feedback!</h2>
+          <p class="confirm-subtitle">Your review has been submitted.</p>
+          <button mat-raised-button color="primary" (click)="goToBookings()">
+            <mat-icon>event_note</mat-icon> Back to My Bookings
+          </button>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+
+</div>

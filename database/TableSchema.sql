@@ -18,6 +18,9 @@ DROP TABLE IF EXISTS users;
 -- USERS TABLE
 -- Stores PROVIDER, REQUESTER, and ADMIN accounts.
 -- is_blocked lets admins restrict accounts without deleting them.
+-- deleted_at is a SOFT delete: an admin "delete" only stamps this column, so the
+-- row, its bookings and reviews stay for history. Deleted users cannot log in
+-- and are hidden from search and admin lists.
 -- ----------------------------------------------------------------
 CREATE TABLE users (
     user_id       INT AUTO_INCREMENT PRIMARY KEY,
@@ -33,6 +36,7 @@ CREATE TABLE users (
     postal_code   VARCHAR(10)  NOT NULL,
     role          ENUM('REQUESTER','PROVIDER','ADMIN') NOT NULL,
     is_blocked    BOOLEAN      NOT NULL DEFAULT FALSE,
+    deleted_at    DATETIME     DEFAULT NULL,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -94,13 +98,18 @@ CREATE TABLE provider_availability (
 -- payment_status  UNPAID (pay on arrival) / PAID (prepaid pack) / REFUNDED
 --               (a prepaid session that was cancelled or declined).
 -- DECLINED      the provider refused a PENDING request (decline_reason optional).
+-- cancelled_by / cancelled_at / cancel_reason  cancellation log: who cancelled
+--               (user_id; NULL if that user was later removed), when, and why.
+-- EXPIRED       a PENDING request nobody accepted within PENDING_EXPIRY_HOURS of
+--               being made, or before its start time (set by utils/bookingExpiry.js;
+--               a prepaid session is flagged REFUNDED).
 -- ----------------------------------------------------------------
 CREATE TABLE bookings (
     booking_id         INT AUTO_INCREMENT PRIMARY KEY,
     provider_detail_id INT NOT NULL,
     requester_id       INT NOT NULL,
     service_id         INT NOT NULL,
-    status             ENUM('PENDING','CONFIRMED','CANCELLED','DECLINED','COMPLETED') NOT NULL DEFAULT 'PENDING',
+    status             ENUM('PENDING','CONFIRMED','CANCELLED','DECLINED','COMPLETED','EXPIRED') NOT NULL DEFAULT 'PENDING',
     scheduled_date     DATETIME     DEFAULT NULL,
     notes              TEXT         DEFAULT NULL,
     booking_type       ENUM('ONE_TIME','RECURRING') NOT NULL DEFAULT 'ONE_TIME',
@@ -111,10 +120,14 @@ CREATE TABLE bookings (
     discount_percent   TINYINT      NOT NULL DEFAULT 0,
     payment_status     ENUM('UNPAID','PAID','REFUNDED') NOT NULL DEFAULT 'UNPAID',
     decline_reason     VARCHAR(255) DEFAULT NULL,
+    cancelled_by       INT          DEFAULT NULL,
+    cancelled_at       DATETIME     DEFAULT NULL,
+    cancel_reason      VARCHAR(255) DEFAULT NULL,
     booking_date       DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (provider_detail_id) REFERENCES provider_details(provider_detail_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (requester_id)       REFERENCES users(user_id)                       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (service_id)         REFERENCES services(service_id)                 ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (cancelled_by)       REFERENCES users(user_id)                       ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_bookings_batch (batch_id),
     INDEX idx_bookings_provider_time (provider_detail_id, scheduled_date)
 );

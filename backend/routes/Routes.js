@@ -9,7 +9,7 @@ const { requireRole, checkBlocked } = require('../middleware/roles');
 
 // Controllers
 const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
-const { listUsers, getUserById, toggleBlock, deleteUser, getStats } = require('../controllers/adminController');
+const { listUsers, getUserById, updateUser, toggleBlock, deleteUser, getStats, listBookings } = require('../controllers/adminController');
 const { getMyServices, addService, removeService, getAvailableServices } = require('../controllers/providerController');
 const { getQuote, createBooking,getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
 const { submitReview, getReviewsForProvider } = require('../controllers/reviewController');
@@ -46,6 +46,8 @@ router.get('/reviews/provider/:providerId', authMiddleware, checkBlocked, getRev
 // ── Admin routes ────────────────────────────────────────────────────────────
 router.get('/admin/users',              authMiddleware, requireRole('ADMIN'), listUsers);
 router.get('/admin/users/:id',          authMiddleware, requireRole('ADMIN'), getUserById);
+router.patch('/admin/users/:id',        authMiddleware, requireRole('ADMIN'), updateUser);
+router.get('/admin/bookings',           authMiddleware, requireRole('ADMIN'), listBookings);
 router.patch('/admin/users/:id/block',  authMiddleware, requireRole('ADMIN'), toggleBlock);
 router.delete('/admin/users/:id',       authMiddleware, requireRole('ADMIN'), deleteUser);
 router.get('/admin/stats',             authMiddleware, requireRole('ADMIN'), getStats);

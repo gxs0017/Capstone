@@ -4,6 +4,7 @@ const express = require('express');
 const cors    = require('cors');
 const pool    = require('./config/db');
 const Routes  = require('./routes/Routes');
+const { startExpiryJob } = require('./utils/bookingExpiry');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -24,6 +25,7 @@ pool.getConnection()
         console.log('MySQL connected successfully');
         conn.release();
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        startExpiryJob();
     })
     .catch(err => {
         console.error('MySQL connection failed:', err.message);

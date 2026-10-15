@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const pool = require('../config/db');
 const rules = require('../utils/bookingRules');
+const { expireStalePending } = require('../utils/bookingExpiry');
 const { toBookingDTOList } = require('../mappers/userMapper');
 
 // ----------------------------------------------------------------
@@ -36,6 +37,7 @@ const getQuote = async (req, res) => {
             sessionOptions: rules.RECURRING_SESSION_OPTIONS,
             minLeadMinutes: rules.MIN_LEAD_MINUTES,
             cancelCutoffHours: rules.CANCEL_CUTOFF_HOURS,
+            pendingExpiryHours: rules.PENDING_EXPIRY_HOURS,
         });
     } catch (err) {
         console.error('getQuote error:', err);
@@ -94,7 +96,9 @@ const createBooking = async (req, res) => {
         // Find the provider_detail_id that links this provider to this service
         const [pd] = await pool.execute(
             `SELECT pd.provider_detail_id, s.base_price
-             FROM provider_details pd JOIN services s ON s.service_id = pd.service_id
+             FROM provider_details pd
+             JOIN services s ON s.service_id = pd.service_id
+             JOIN users u ON u.user_id = pd.user_id AND u.deleted_at IS NULL
              WHERE pd.user_id = ? AND pd.service_id = ?`,
             [providerId, serviceId]
         );
@@ -204,6 +208,7 @@ const createBooking = async (req, res) => {
 // ----------------------------------------------------------------
 const getMyBookings = async (req, res) => {
     try {
+        await expireStalePending();
         const userId = req.user.id;
         const role   = req.user.role;
         const view   = req.query.view; // 'requests' = incoming (provider view), default = outgoing (requester view)
@@ -278,15 +283,19 @@ const getMyBookings = async (req, res) => {
 // ----------------------------------------------------------------
 // PATCH /api/bookings/:id/status — update booking status
 // Body: { status: 'CONFIRMED' | 'DECLINED' | 'CANCELLED' | 'COMPLETED', reason? }
+// A cancellation is logged on the booking row: cancelled_by, cancelled_at, cancel_reason.
 //  PENDING             -> CONFIRMED / DECLINED  (provider; DECLINED may carry a reason)
+//  PENDING             -> EXPIRED               (automatic, see utils/bookingExpiry.js)
 //  PENDING / CONFIRMED -> CANCELLED             (requester, provider or admin)
 //  CONFIRMED           -> COMPLETED             (either party; triggers the
 //                                                requester's review prompt)
-// Requesters cannot cancel within CANCEL_CUTOFF_HOURS of the start time.
+// Requesters cannot cancel within CANCEL_CUTOFF_HOURS of the start time;
+// providers and admins can cancel any active booking right up to the last minute.
 // A cancelled/declined prepaid session is flagged REFUNDED.
 // ----------------------------------------------------------------
 const updateBookingStatus = async (req, res) => {
     try {
+        await expireStalePending(); // a request past its deadline can no longer be accepted
         const { status } = req.body;
         const reason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 255) : '';
         if (!['CONFIRMED', 'DECLINED', 'CANCELLED', 'COMPLETED'].includes(status)) {
@@ -342,12 +351,15 @@ const updateBookingStatus = async (req, res) => {
         const refund = ['CANCELLED', 'DECLINED'].includes(status) && booking.payment_status === 'PAID';
         await pool.execute(
             `UPDATE bookings
-             SET status = ?, decline_reason = ?, payment_status = ?
+             SET status = ?, decline_reason = ?, payment_status = ?,
+                 cancelled_by = ?, cancelled_at = ${status === 'CANCELLED' ? 'NOW()' : 'cancelled_at'}, cancel_reason = ?
              WHERE booking_id = ?`,
             [
                 status,
                 status === 'DECLINED' ? (reason || null) : booking.decline_reason,
                 refund ? 'REFUNDED' : booking.payment_status,
+                status === 'CANCELLED' ? req.user.id : booking.cancelled_by,
+                status === 'CANCELLED' ? (reason || null) : booking.cancel_reason,
                 req.params.id,
             ]
         );

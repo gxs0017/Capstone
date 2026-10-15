@@ -165,7 +165,8 @@
               <span>
                 Book at least {{ q.minLeadMinutes / 60 }} hour before the start time. Free cancellation until
                 {{ q.cancelCutoffHours }} hours before the start; after that, the booking cannot be cancelled.
-                @if (isRecurring()) { Cancelled prepaid sessions are refunded. }
+                Requests the provider doesn't accept within {{ q.pendingExpiryHours }} hours expire automatically.
+                @if (isRecurring()) { Cancelled or expired prepaid sessions are refunded. }
               </span>
             </p>
           }

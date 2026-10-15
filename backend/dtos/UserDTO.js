@@ -44,6 +44,7 @@ const AdminUserDTO = (user) => ({
     lastName:    user.last_name  ?? user.lastName,
     email:       user.email,
     phoneNumber: user.phone_number ?? user.phoneNumber,
+    street:      user.street,
     city:        user.city,
     province:    user.province,
     postalCode:  user.postal_code ?? user.postalCode,
@@ -94,6 +95,12 @@ const BookingDTO = (row) => ({
     declineReason: row.decline_reason,
     canCancel:     !!row.can_cancel,
     cancelDeadline: row.cancel_deadline ?? null,
+    cancellation:  row.cancelled_at ? {
+        at:     row.cancelled_at,
+        reason: row.cancel_reason ?? null,
+        by:     row.cancelled_by_name ?? null,
+        byRole: row.cancelled_by_role ?? null,
+    } : null,
     provider: {
         id:        row.provider_id,
         firstName: row.provider_first_name,

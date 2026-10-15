@@ -126,6 +126,16 @@
                   </div>
                 }
 
+                @if (booking.status === 'EXPIRED') {
+                  <div class="detail-row">
+                    <mat-icon class="detail-icon">timer_off</mat-icon>
+                    <div>
+                      <span class="detail-label">Expired</span>
+                      <span class="detail-value">This request was not accepted in time.@if (booking.paymentStatus === 'REFUNDED') { Your prepaid session was refunded. }</span>
+                    </div>
+                  </div>
+                }
+
                 @if (booking.notes) {
                   <div class="detail-row">
                     <mat-icon class="detail-icon">notes</mat-icon>

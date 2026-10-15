@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'DECLINED' | 'COMPLETED';
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'DECLINED' | 'COMPLETED' | 'EXPIRED';
 export type BookingType = 'ONE_TIME' | 'RECURRING';
 export type PaymentStatus = 'UNPAID' | 'PAID' | 'REFUNDED';
 
@@ -24,6 +24,8 @@ export interface Booking {
   /** Server-computed: false once inside the cancellation cutoff (requesters). */
   canCancel: boolean;
   cancelDeadline: string | null;
+  /** Cancellation log: set once a booking has been cancelled. */
+  cancellation: { at: string; reason: string | null; by: string | null; byRole: string | null } | null;
   provider: {
     id: number;
     firstName: string;
@@ -64,6 +66,7 @@ export interface BookingQuote {
   sessionOptions: number[];
   minLeadMinutes: number;
   cancelCutoffHours: number;
+  pendingExpiryHours: number;
 }
 
 export interface CreateBookingResponse {
@@ -74,7 +77,7 @@ export interface CreateBookingResponse {
   status: BookingStatus;
   paymentStatus: PaymentStatus;
   scheduledDates: string[];
-  quote: Omit<BookingQuote, 'sessionOptions' | 'minLeadMinutes' | 'cancelCutoffHours'>;
+  quote: Omit<BookingQuote, 'sessionOptions' | 'minLeadMinutes' | 'cancelCutoffHours' | 'pendingExpiryHours'>;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -110,7 +110,7 @@ const getProviders = async (
         FROM users u
         JOIN provider_details pd ON u.user_id = pd.user_id
         JOIN services s ON pd.service_id = s.service_id
-        WHERE u.role = 'PROVIDER'
+        WHERE u.role = 'PROVIDER' AND u.deleted_at IS NULL
         ${whereExtra}
     `;
     const [[{ total }]] = await pool.execute(countQuery, filterParams);
@@ -135,7 +135,7 @@ const getProviders = async (
         FROM users u
         JOIN provider_details pd ON u.user_id = pd.user_id
         JOIN services s ON pd.service_id = s.service_id
-        WHERE u.role = 'PROVIDER'
+        WHERE u.role = 'PROVIDER' AND u.deleted_at IS NULL
         ${whereExtra}
         GROUP BY u.user_id
         ORDER BY ${orderByClause}

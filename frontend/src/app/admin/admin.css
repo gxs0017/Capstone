@@ -272,3 +272,20 @@
   font-size: 0.9rem;
   color: var(--mat-sys-on-surface-variant);
 }
+
+/* Tabs */
+.admin-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.tab-active { background: var(--mat-sys-primary, #1d4ed8) !important; color: #fff !important; }
+
+/* Booking rows */
+.booking-id { font-weight: 700; min-width: 48px; color: var(--mat-sys-on-surface-variant); }
+.status-pending   { background: #fef3c7; color: #92400e; }
+.status-confirmed { background: #d1fae5; color: #065f46; }
+.status-cancelled { background: #fef2f2; color: #991b1b; }
+.status-declined  { background: #f3f4f6; color: #4b5563; }
+.status-completed { background: #e0e7ff; color: #3730a3; }
+.status-expired   { background: #f3f4f6; color: #6b7280; }
+
+/* Inline profile editor */
+.edit-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 16px; padding: 0 16px 8px; }
+.edit-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; padding-bottom: 12px; }

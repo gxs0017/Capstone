@@ -147,6 +147,7 @@ export class MyBookingsComponent implements OnInit {
       case 'DECLINED':  return 'status-declined';
       case 'PENDING':   return 'status-pending';
       case 'COMPLETED': return 'status-completed';
+      case 'EXPIRED':   return 'status-expired';
       default:          return '';
     }
   }
@@ -158,6 +159,7 @@ export class MyBookingsComponent implements OnInit {
       case 'DECLINED':  return 'block';
       case 'PENDING':   return 'pending';
       case 'COMPLETED': return 'task_alt';
+      case 'EXPIRED':   return 'timer_off';
       default:          return 'help';
     }
   }
