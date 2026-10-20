@@ -66,6 +66,7 @@ const ProfileDTO = (user, services = []) => ({
     dateOfBirth: user.date_of_birth ?? user.dateOfBirth,
     street:      user.street,
     city:        user.city,
+    profilePicture: user.profile_picture ?? user.profilePicture,
     province:    user.province,
     postalCode:  user.postal_code ?? user.postalCode,
     role:        user.role,

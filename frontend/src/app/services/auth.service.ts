@@ -16,6 +16,7 @@ export interface UserProfile {
   phoneNumber?: string;
   dateOfBirth?: string;
   street?: string;
+  profilePicture?: string;
   postalCode?: string;
   isBlocked?: boolean;
   services?: string[];
@@ -65,6 +66,20 @@ export class AuthService {
       })
     );
   }
+
+  /** Upload profile picture to backend */
+uploadProfilePicture(file: File): Observable<any> {
+ // Create a FormData object to send the file
+  const Data = new FormData();
+  //important part as this is what backend is expecting for a picture to be uploadded
+  Data.append('picture', file);
+  return this.http.post(`${this.API}/profile-picture`, Data);
+}
+
+// Remove profile picture
+removeProfilePicture(): Observable<any> {
+  return this.http.delete(`${this.API}/profile-picture`);
+}
 
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);

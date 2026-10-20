@@ -12,7 +12,15 @@
       <mat-card class="profile-card">
         <mat-card-content>
           <div class="avatar-section">
-            <div class="avatar">{{ initials }}</div>
+            @if (user?.profilePicture) {
+  <img
+    class="avatar"
+    [src]="'http://localhost:5000' + user?.profilePicture"
+    alt="Profile Picture"
+  >
+} @else {
+  <div class="avatar">{{ initials }}</div>
+}
             <div>
               <h2 class="user-name">{{ user?.firstName }} {{ user?.lastName }}</h2>
               <p class="user-role">{{ roleLabel }}</p>
@@ -20,6 +28,28 @@
                 <mat-icon class="inline-icon">email</mat-icon>
                 {{ user?.email }}
               </p>
+               <input
+                  #profilePictureInput
+                  type="file"
+                   accept=".jpg,.jpeg,.png"
+                 (change)="uploadProfilePicture($event)"
+                    hidden>
+                 <button
+                   mat-stroked-button
+                 type="button"
+                class="profile-picture-button"
+                 (click)="profilePictureInput.click()">
+                <mat-icon>photo_camera</mat-icon>
+                Choose Profile Picture
+              </button>
+              @if (user?.profilePicture) {
+               <button
+                  mat-stroked-button
+                    type="button"
+                  (click)="removeProfilePicture()" >
+                   Remove Profile Picture
+             </button>
+}
             </div>
           </div>
 

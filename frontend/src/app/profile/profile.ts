@@ -43,6 +43,7 @@ export class ProfileComponent implements OnInit {
   serviceToAdd     = new FormControl<number | null>(null);
   serviceLoading   = signal(false);
   serviceMessage   = signal('');
+  profilePictureMessage = signal('');
 
   get user() {
     return this.authService.currentUser();
@@ -123,6 +124,7 @@ export class ProfileComponent implements OnInit {
       },
     });
   }
+  
 
   removeService(svc: ServiceItem): void {
     if (!confirm(`Remove "${svc.service_name}" from your offerings?`)) return;
@@ -143,6 +145,57 @@ export class ProfileComponent implements OnInit {
       },
     });
   }
+
+// Profile picture functions (remove and upload)
+removeProfilePicture(): void {
+  this.authService.removeProfilePicture().subscribe({
+ 
+    next: () => {
+      this.profilePictureMessage.set('Profile picture removed!');
+      this.authService.refreshProfile().subscribe();
+    },
+
+    error: () => {
+      this.profilePictureMessage.set('Failed to remove profile picture!');
+    },
+  });
+}
+
+
+uploadProfilePicture(event: Event): void {
+
+  const input = event.target as HTMLInputElement;
+  // Check if a file was selected
+  if (!input.files) {
+    return; 
+  }
+
+  else if(input.files.length === 0) {
+    return;
+  }
+
+  // Get the first file
+  const file = input.files[0];
+
+ //declare a maximum file size of 2 MB   -SIZE VALIDATION
+  const maxFileSize = 2 * 1024 * 1024;
+
+  if (file.size > maxFileSize) {
+  alert('File is too large. Maximum size is 2 MB');
+  return;
+}
+
+  this.authService.uploadProfilePicture(file).subscribe({
+    next: () => {
+              this.profilePictureMessage.set('Profile picture uploaded!');
+              this.authService.refreshProfile().subscribe();
+    },
+
+    error: () => {
+      this.profilePictureMessage.set('Failed to upload profile picture!');
+    },
+  });
+}
 
   getServiceIcon(name: string): string {
     switch (name) {

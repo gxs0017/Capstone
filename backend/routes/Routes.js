@@ -2,6 +2,10 @@
 // Main API router — organizes endpoints by domain.
 // All routes are mounted under /api/auth in server.js.
 
+const profilePictureUpload = require('../middleware/profilePictureUpload');
+
+const {uploadProfilePicture,  removeProfilePicture} = require('../controllers/ProfilePictureController');
+
 const express        = require('express');
 const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
@@ -23,6 +27,8 @@ router.post('/login',    authLimiter, validateLogin, loginUser);
 
 // ── Authenticated routes (any logged-in user) ───────────────────────────────
 router.get('/profile',   authMiddleware, checkBlocked, getProfile);
+router.post('/profile-picture', authMiddleware, checkBlocked, profilePictureUpload.single('picture'), uploadProfilePicture);
+router.delete('/profile-picture', authMiddleware, checkBlocked, removeProfilePicture);
 router.get('/providers',  getProviders);
 
 // ── Provider routes ─────────────────────────────────────────────────────────

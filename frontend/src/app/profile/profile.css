@@ -13,6 +13,14 @@
   gap: 12px;
 }
 
+.profile-picture-button {
+  margin-top: 6px;
+  padding: 0 10px;
+  min-width: auto;
+  height: 32px;
+  font-size: 12px;
+}
+
 .big-icon {
   font-size: 72px;
   width: 72px;

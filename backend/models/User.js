@@ -34,6 +34,14 @@ const createUser = async ({ firstName, lastName, phoneNumber, dateOfBirth,
     return result.insertId;
 };
 
+// Update or remove a user's profile picture
+const updateProfilePicture = async (userId, picturePath) => {
+    await pool.execute(
+        'UPDATE users SET profile_picture = ? WHERE user_id = ?',
+        [picturePath, userId]
+    );
+};
+
 // ── Service helpers ───────────────────────────────────────────────────────────
 
 const findServiceByName = async (serviceName) => {
@@ -166,4 +174,5 @@ const getServicesByUserId = async (userId) => {
 
 module.exports = { findByEmail, findById, createUser,
                    findServiceByName, addProviderService, getProviders,
-                   getServicesByUserId };
+                   getServicesByUserId, updateProfilePicture };
+                   

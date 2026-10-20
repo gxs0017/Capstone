@@ -17,7 +17,12 @@ app.use(helmet());
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4200').split(',').map(o => o.trim());
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
-
+// Serve uploaded profile pictures statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+    setHeaders: (res) => {
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+}));
 // Mount auth/provider routes
 app.use('/api', globalLimiter);
 app.use('/api/auth', Routes);
