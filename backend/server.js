@@ -1,5 +1,6 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+const http    = require('http');
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
@@ -7,10 +8,14 @@ const pool    = require('./config/db');
 const Routes  = require('./routes/Routes');
 const { globalLimiter } = require('./middleware/rateLimit');
 const { startExpiryJob } = require('./utils/bookingExpiry');
+const { initSocket } = require('./config/socket');
 
 const app  = express();
 app.set('trust proxy', 1); // trust host proxy (Render) so rate limiting sees real client IPs
 const PORT = process.env.PORT || 5000;
+
+// Shares the one HTTP server between Express and the Socket.IO chat layer.
+const server = http.createServer(app);
 
 // Security headers
 app.use(helmet());
@@ -32,7 +37,8 @@ pool.getConnection()
     .then(conn => {
         console.log('MySQL connected successfully');
         conn.release();
-        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        initSocket(server);
+        server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
         startExpiryJob();
     })
     .catch(err => {

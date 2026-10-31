@@ -6,18 +6,22 @@ const express        = require('express');
 const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { requireRole, checkBlocked } = require('../middleware/roles');
-const { authLimiter } = require('../middleware/rateLimit');
-const { validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent, validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice } = require('../middleware/validators');
+const { authLimiter, messageLimiter } = require('../middleware/rateLimit');
+const { validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent, validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice,
+        validateStartConversation, validateSendMessage, validatePinBooking, validateReviewMessage } = require('../middleware/validators');
 
 // Controllers
 const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
-const { listUsers, getUserById, updateUser, toggleBlock, deleteUser, getStats, listBookings, getAuditLogs } = require('../controllers/adminController');
+const { listUsers, getUserById, updateUser, toggleBlock, deleteUser, getStats, listBookings, getAuditLogs,
+        listFlaggedMessages, reviewFlaggedMessage } = require('../controllers/adminController');
 const { getMyServices, addService, removeService, getAvailableServices, updatePrice } = require('../controllers/providerController');
-const { getQuote, createBooking, getMyBookings, updateBookingStatus } = require('../controllers/bookingController');
+const { getQuote, createBooking, getMyBookings, updateBookingStatus, getBookingById } = require('../controllers/bookingController');
 const { createPaymentIntent, confirmPayment } = require('../controllers/paymentController');
 const { createOrder: paypalCreateOrder, capture: paypalCapture, config: paypalConfig } = require('../controllers/paypalController');
 const { submitReview, getReviewsForProvider } = require('../controllers/reviewController');
 const { getProviderAvailability, getMyAvailability, addAvailability, removeAvailability } = require('../controllers/availabilityController');
+const { getConversations, getUnreadCount, startConversation, getBookingOptions, pinBooking,
+        getMessages, markRead, sendMessage } = require('../controllers/chatController');
 
 // ── Public routes (no token needed) ──────────────────────────────────────────
 router.post('/register', authLimiter, validateRegister, registerUser);
@@ -43,6 +47,7 @@ router.delete('/provider/my-availability/:id',       authMiddleware, checkBlocke
 router.get('/bookings/quote',         authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getQuote);
 router.post('/bookings',              authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreateBooking, createBooking);
 router.get('/bookings/my',            authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getMyBookings);
+router.get('/bookings/:id',           authMiddleware, checkBlocked, getBookingById);
 router.patch('/bookings/:id/status',  authMiddleware, checkBlocked, requireRole('PROVIDER', 'REQUESTER', 'ADMIN'), validateBookingStatus, updateBookingStatus);
 router.post( '/payments/create-intent', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreatePaymentIntent, createPaymentIntent);
 router.post('/payments/confirm', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), confirmPayment);
@@ -51,6 +56,16 @@ router.post('/payments/confirm', authMiddleware, checkBlocked, requireRole('REQU
 router.get('/payments/paypal/config', authMiddleware, paypalConfig);
 router.post('/payments/paypal/create-order', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), paypalCreateOrder);
 router.post('/payments/paypal/capture', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), paypalCapture);
+
+// ── Chat routes (any logged-in user can message any other) ─────────────────
+router.get('/chat/conversations',                             authMiddleware, checkBlocked, getConversations);
+router.get('/chat/unread-count',                               authMiddleware, checkBlocked, getUnreadCount);
+router.post('/chat/conversations',                             authMiddleware, checkBlocked, validateStartConversation, startConversation);
+router.get('/chat/conversations/:conversationId/booking-options', authMiddleware, checkBlocked, getBookingOptions);
+router.patch('/chat/conversations/:conversationId/pin',        authMiddleware, checkBlocked, validatePinBooking, pinBooking);
+router.get('/chat/conversations/:conversationId/messages',     authMiddleware, checkBlocked, getMessages);
+router.patch('/chat/conversations/:conversationId/read',       authMiddleware, checkBlocked, markRead);
+router.post('/chat/conversations/:conversationId/messages',    authMiddleware, checkBlocked, messageLimiter, validateSendMessage, sendMessage);
 
 // ── Review routes (REQUESTER submits, anyone logged-in can read) ───────────
 router.post('/reviews',                    authMiddleware, checkBlocked, requireRole('REQUESTER'), submitReview);
@@ -65,5 +80,7 @@ router.patch('/admin/users/:id/block',  authMiddleware, checkBlocked, requireRol
 router.delete('/admin/users/:id',       authMiddleware, checkBlocked, requireRole('ADMIN'), deleteUser);
 router.get('/admin/stats',              authMiddleware, checkBlocked, requireRole('ADMIN'), getStats);
 router.get('/admin/audit-logs',         authMiddleware, checkBlocked, requireRole('ADMIN'), getAuditLogs);
+router.get('/admin/chat/flagged',           authMiddleware, checkBlocked, requireRole('ADMIN'), listFlaggedMessages);
+router.patch('/admin/chat/flagged/:messageId', authMiddleware, checkBlocked, requireRole('ADMIN'), validateReviewMessage, reviewFlaggedMessage);
 
 module.exports = router;

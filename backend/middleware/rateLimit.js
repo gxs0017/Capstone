@@ -20,4 +20,14 @@ const authLimiter = rateLimit({
     message: { message: 'Too many attempts. Please try again in a few minutes.' },
 });
 
-module.exports = { globalLimiter, authLimiter };
+// Chat message sending: generous enough for real conversation, tight enough
+// to blunt a scripted spam burst. 30 messages / minute / IP.
+const messageLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'You are sending messages too quickly. Please slow down.' },
+});
+
+module.exports = { globalLimiter, authLimiter, messageLimiter };

@@ -61,10 +61,24 @@
     <button mat-stroked-button [class.tab-active]="tab() === 'bookings'" (click)="tab.set('bookings')">
       <mat-icon>event_note</mat-icon> Bookings
     </button>
+    <button mat-stroked-button [class.tab-active]="tab() === 'logs'" (click)="tab.set('logs')">
+      <mat-icon>receipt_long</mat-icon> Logs
+    </button>
+    <button mat-stroked-button [class.tab-active]="tab() === 'moderation'" (click)="tab.set('moderation')">
+      <mat-icon>gavel</mat-icon> Moderation
+    </button>
   </div>
 
   @if (tab() === 'bookings') {
     <app-admin-bookings (changed)="loadStats()"></app-admin-bookings>
+  }
+
+  @if (tab() === 'logs') {
+    <app-admin-logs></app-admin-logs>
+  }
+
+  @if (tab() === 'moderation') {
+    <app-admin-moderation></app-admin-moderation>
   }
 
   @if (tab() === 'users') {

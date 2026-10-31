@@ -289,3 +289,18 @@
 /* Inline profile editor */
 .edit-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 16px; padding: 0 16px 8px; }
 .edit-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; padding-bottom: 12px; }
+
+/* Logs tab */
+.logs-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.logs-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid rgba(0, 0, 0, 0.1); color: var(--mat-sys-on-surface-variant); font-weight: 600; }
+.logs-table td { padding: 10px 12px; border-bottom: 1px solid rgba(0, 0, 0, 0.06); vertical-align: top; }
+.action-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; background: rgba(0, 0, 0, 0.06); font-weight: 600; font-size: 0.75rem; }
+.ip-cell { font-family: monospace; color: var(--mat-sys-on-surface-variant); }
+
+/* Moderation tab */
+.moderation-list { display: flex; flex-direction: column; gap: 12px; }
+.moderation-card { border-left: 4px solid #f59e0b; }
+.moderation-content { background: rgba(0, 0, 0, 0.04); padding: 10px 12px; border-radius: 6px; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
+.moderation-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; color: var(--mat-sys-on-surface-variant); }
+.moderation-reason { font-weight: 600; color: #b45309; }
+.moderation-actions { display: flex; gap: 8px; margin-top: 12px; }

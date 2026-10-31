@@ -15,6 +15,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDivider } from '@angular/material/divider';
 import { AdminService, AdminUser, AdminUserPage, DashboardStats } from '../services/admin.service';
 import { AdminBookingsComponent } from './admin-bookings';
+import { AdminLogsComponent } from './admin-logs';
+import { AdminModerationComponent } from './admin-moderation';
 
 @Component({
   selector: 'app-admin',
@@ -32,6 +34,8 @@ import { AdminBookingsComponent } from './admin-bookings';
     MatTooltipModule,
     MatDivider,
     AdminBookingsComponent,
+    AdminLogsComponent,
+    AdminModerationComponent,
   ],
   templateUrl: './admin.html',
   styleUrl: './admin.css',
@@ -54,7 +58,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   actionLoading = signal<number | null>(null); // userId being acted on
   actionMessage = signal('');
 
-  tab = signal<'users' | 'bookings'>('users');
+  tab = signal<'users' | 'bookings' | 'logs' | 'moderation'>('users');
 
   // Inline profile editor (one user at a time)
   editingId = signal<number | null>(null);

@@ -1,0 +1,50 @@
+@if (actionMessage()) {
+  <div class="action-message">
+    <mat-icon>warning</mat-icon>
+    {{ actionMessage() }}
+  </div>
+}
+
+@if (loading()) {
+  <div class="state-center">
+    <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    <p>Loading flagged messages...</p>
+  </div>
+} @else if (messages().length === 0) {
+  <div class="state-center">
+    <mat-icon class="empty-icon">verified</mat-icon>
+    <h3>Nothing held for review</h3>
+    <p>Flagged messages will show up here once the auto-moderation bot is enabled.</p>
+  </div>
+} @else {
+  <div class="moderation-list">
+    @for (msg of messages(); track msg.messageId) {
+      <mat-card class="moderation-card">
+        <mat-card-content>
+          <div class="moderation-meta">
+            <span>Case #{{ msg.messageId }}</span>
+            <span>From: {{ msg.sender.firstName }} {{ msg.sender.lastName }} (user #{{ msg.sender.id }})</span>
+            <span>{{ msg.createdAt | date:'medium' }}</span>
+            <span class="ip-cell">IP: {{ msg.ipAddress || '—' }}</span>
+          </div>
+          @if (msg.flagReason) {
+            <div class="moderation-reason">Flagged for: {{ msg.flagReason }}</div>
+          }
+          <div class="moderation-content">{{ msg.content }}</div>
+          <div class="moderation-actions">
+            @if (actionLoading() === msg.messageId) {
+              <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+            } @else {
+              <button mat-raised-button color="primary" (click)="review(msg, true)">
+                <mat-icon>check</mat-icon> Approve
+              </button>
+              <button mat-stroked-button color="warn" (click)="review(msg, false)">
+                <mat-icon>block</mat-icon> Reject
+              </button>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+}

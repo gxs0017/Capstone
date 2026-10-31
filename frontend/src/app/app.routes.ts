@@ -11,6 +11,7 @@ import { ReviewComponent } from './review/review';
 import { AvailabilityComponent } from './availability/availability';
 import { authGuard, roleGuard } from './guards/auth.guard';
 import { PaymentComponent } from './payments/payment';
+import { MessagesComponent } from './messages/messages';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
@@ -26,5 +27,6 @@ export const routes: Routes = [
   { path: 'review/:id', component: ReviewComponent, canActivate: [roleGuard('REQUESTER')] },
   { path: 'availability', component: AvailabilityComponent, canActivate: [roleGuard('PROVIDER')] },
   { path: 'admin', component: AdminComponent, canActivate: [roleGuard('ADMIN')] },
+  { path: 'messages', component: MessagesComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: 'home' },
 ];

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE } from '../core/api.config';
 
 export interface SubmitReviewPayload {
   bookingId: number;
@@ -30,7 +31,7 @@ export interface ProviderReviews {
 
 @Injectable({ providedIn: 'root' })
 export class ReviewService {
-  private readonly API = 'http://localhost:5000/api/auth/reviews';
+  private readonly API = `${API_BASE}/reviews`;
 
   constructor(private http: HttpClient) {}
 

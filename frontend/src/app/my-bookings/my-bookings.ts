@@ -9,6 +9,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BookingService, Booking } from '../services/booking.service';
 import { AuthService } from '../services/auth.service';
+import { ChatService } from '../services/chat.service';
 
 @Component({
   selector: 'app-my-bookings',
@@ -28,6 +29,7 @@ import { AuthService } from '../services/auth.service';
 })
 export class MyBookingsComponent implements OnInit {
   private bookingService = inject(BookingService);
+  private chatService = inject(ChatService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   authService = inject(AuthService);
@@ -36,6 +38,9 @@ export class MyBookingsComponent implements OnInit {
   loading  = signal(false);
   actionLoading = signal<number | null>(null);
   message  = signal('');
+
+  /** bookingId whose "Message" button is currently working, for a per-card spinner. */
+  messagingLoading = signal<number | null>(null);
 
   /** True when viewing incoming requests (provider /requests route) */
   isRequestsView = signal(false);
@@ -131,6 +136,30 @@ export class MyBookingsComponent implements OnInit {
         }
       },
       error: () => this.actionLoading.set(null),
+    });
+  }
+
+  /**
+   * Start (or reuse) the conversation with the other party on this booking,
+   * pin this booking to it, and open /messages with that conversation selected.
+   */
+  messageUser(booking: Booking): void {
+    if (this.messagingLoading() !== null) return;
+
+    const otherUserId = this.isRequestsView()
+      ? booking.requester.id
+      : booking.provider.id;
+
+    this.messagingLoading.set(booking.bookingId);
+    this.chatService.startConversation(otherUserId, booking.bookingId).subscribe({
+      next: (conversation) => {
+        this.messagingLoading.set(null);
+        this.router.navigate(['/messages'], { queryParams: { conversation: conversation.conversationId } });
+      },
+      error: () => {
+        this.messagingLoading.set(null);
+        this.flash('Could not open the conversation. Please try again.');
+      },
     });
   }
 

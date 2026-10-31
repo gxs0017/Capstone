@@ -108,6 +108,11 @@ export class BookingService {
     return this.http.get<Booking[]>(`${this.API}/my`, { params });
   }
 
+  /** Single booking detail — used by the chat "pinned booking" context panel. */
+  getBookingById(bookingId: number): Observable<Booking> {
+    return this.http.get<Booking>(`${this.API}/${bookingId}`);
+  }
+
   updateStatus(
     bookingId: number,
     status: 'CONFIRMED' | 'DECLINED' | 'CANCELLED' | 'COMPLETED',

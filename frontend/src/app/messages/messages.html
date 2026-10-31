@@ -1,0 +1,149 @@
+<div class="messages-page">
+  <div class="messages-header">
+    <h1>Messages</h1>
+  </div>
+
+  <!-- Booking context panel: docked above the sidebar/thread split, driven by
+       a live backend fetch of the pinned booking (not cached page state). -->
+  @if (selected()) {
+    <div class="context-panel">
+      @if (pinnedBookingLoading()) {
+        <div class="context-loading">
+          <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
+          <span>Loading booking context…</span>
+        </div>
+      } @else if (pinnedBooking()) {
+        <div class="context-content">
+          <mat-icon class="context-icon">event_note</mat-icon>
+          <div class="context-main">
+            <div class="context-title">
+              {{ pinnedBooking()!.service }}
+              <span class="context-confirmation">Confirmation #{{ pinnedBooking()!.bookingId }}</span>
+            </div>
+            <div class="context-meta">
+              <span class="status-badge">{{ pinnedBooking()!.status }}</span>
+              @if (pinnedBooking()!.scheduledDate) {
+                <span>{{ pinnedBooking()!.scheduledDate | date:'medium' }}</span>
+              }
+              @if (pinnedBooking()!.price !== null) {
+                <span>{{ pinnedBooking()!.price | currency }} &middot; {{ pinnedBooking()!.paymentStatus }}</span>
+              }
+              <span>with {{ otherParticipantName(selected()!) }}</span>
+            </div>
+          </div>
+          <button mat-button [matMenuTriggerFor]="pinMenu" (click)="openPinPicker()">
+            <mat-icon>push_pin</mat-icon> Change
+          </button>
+        </div>
+      } @else {
+        <div class="context-content context-empty">
+          <mat-icon class="context-icon">push_pin</mat-icon>
+          <span>No booking pinned to this conversation.</span>
+          <button mat-button [matMenuTriggerFor]="pinMenu" (click)="openPinPicker()">
+            <mat-icon>push_pin</mat-icon> Pin a booking
+          </button>
+        </div>
+      }
+
+      <mat-menu #pinMenu="matMenu">
+        @if (bookingOptions().length === 0) {
+          <button mat-menu-item disabled>No shared bookings found</button>
+        }
+        @for (opt of bookingOptions(); track trackByBookingOption($index, opt)) {
+          <button mat-menu-item (click)="pinBooking(opt.bookingId)">
+            {{ opt.service }} — #{{ opt.bookingId }} ({{ opt.status }})
+          </button>
+        }
+        @if (selected()?.pinnedBookingId) {
+          <button mat-menu-item (click)="pinBooking(null)">
+            <mat-icon>close</mat-icon> Unpin
+          </button>
+        }
+      </mat-menu>
+    </div>
+  }
+
+  <div class="messages-body">
+    <!-- Conversation list -->
+    <aside class="conversation-sidebar">
+      @if (loadingConversations()) {
+        <div class="sidebar-state">
+          <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+        </div>
+      } @else if (conversations().length === 0) {
+        <div class="sidebar-state">
+          <mat-icon class="empty-icon">forum</mat-icon>
+          <p>No conversations yet.</p>
+        </div>
+      } @else {
+        @for (convo of conversations(); track trackByConversation($index, convo)) {
+          <button
+            class="conversation-row"
+            [class.conversation-row--active]="selected()?.conversationId === convo.conversationId"
+            (click)="selectConversation(convo)">
+            <div class="conversation-avatar">{{ initialsFor(convo) }}</div>
+            <div class="conversation-info">
+              <span class="conversation-name">{{ otherParticipantName(convo) }}</span>
+              @if (convo.pinnedBookingId) {
+                <span class="conversation-pin"><mat-icon class="pin-icon">push_pin</mat-icon> Booking #{{ convo.pinnedBookingId }}</span>
+              }
+            </div>
+            @if (convo.unreadCount > 0) {
+              <span class="unread-chip">{{ convo.unreadCount }}</span>
+            }
+          </button>
+        }
+      }
+    </aside>
+
+    <!-- Thread -->
+    <main class="thread-main">
+      @if (!selected()) {
+        <div class="thread-empty">
+          <mat-icon class="empty-icon">chat</mat-icon>
+          <p>Select a conversation to start chatting.</p>
+        </div>
+      } @else {
+        <div class="thread-header">
+          <div class="conversation-avatar">{{ initialsFor(selected()!) }}</div>
+          <span class="thread-name">{{ otherParticipantName(selected()!) }}</span>
+        </div>
+
+        <div class="thread-messages">
+          @if (loadingMessages()) {
+            <div class="thread-state">
+              <mat-progress-spinner mode="indeterminate" diameter="32"></mat-progress-spinner>
+            </div>
+          } @else if (messages().length === 0) {
+            <div class="thread-state">
+              <p>No messages yet — say hello.</p>
+            </div>
+          } @else {
+            @for (msg of messages(); track trackByMessage($index, msg)) {
+              <div class="message-row" [class.message-row--mine]="isMine(msg)">
+                <div class="message-bubble" [class.message-bubble--held]="msg.status !== 'SENT' && msg.status !== 'APPROVED'">
+                  @if (msg.status === 'BLOCKED' || msg.status === 'REJECTED') {
+                    <span class="held-placeholder">{{ heldPlaceholder(msg) }}</span>
+                  } @else {
+                    <span class="message-content">{{ msg.content }}</span>
+                  }
+                  <span class="message-time">{{ msg.createdAt | date:'shortTime' }}</span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <div class="thread-composer">
+          <mat-form-field appearance="outline" class="composer-field">
+            <mat-label>Type a message</mat-label>
+            <input matInput [(ngModel)]="draft" (keydown.enter)="onEnter($event)" [disabled]="sending()" />
+          </mat-form-field>
+          <button mat-icon-button color="primary" [disabled]="!draft.trim() || sending()" (click)="send()">
+            <mat-icon>send</mat-icon>
+          </button>
+        </div>
+      }
+    </main>
+  </div>
+</div>

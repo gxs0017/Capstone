@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE } from '../core/api.config';
 
 // day: 0=Sunday .. 6=Saturday (matches Date.prototype.getDay())
 export interface AvailabilitySlot {
@@ -18,8 +19,8 @@ export interface AddAvailabilityPayload {
 
 @Injectable({ providedIn: 'root' })
 export class AvailabilityService {
-  private readonly PROVIDERS_API = 'http://localhost:5000/api/auth/providers';
-  private readonly MY_API = 'http://localhost:5000/api/auth/provider/my-availability';
+  private readonly PROVIDERS_API = `${API_BASE}/providers`;
+  private readonly MY_API = `${API_BASE}/provider/my-availability`;
 
   constructor(private http: HttpClient) {}
 

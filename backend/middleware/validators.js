@@ -74,7 +74,35 @@ const validateBlockUser = [
     handleValidation,
 ];
 
+const MAX_MESSAGE_LENGTH = 1000;
+
+const validateStartConversation = [
+    body('otherUserId').isInt({ min: 1 }).withMessage('otherUserId must be a positive integer.'),
+    body('bookingId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('bookingId must be a positive integer.'),
+    handleValidation,
+];
+
+const validateSendMessage = [
+    param('conversationId').isInt({ min: 1 }).withMessage('Invalid conversation id.'),
+    body('content').trim().notEmpty().withMessage('Message content cannot be empty.')
+        .isLength({ max: MAX_MESSAGE_LENGTH }).withMessage(`Message must be under ${MAX_MESSAGE_LENGTH} characters.`),
+    handleValidation,
+];
+
+const validatePinBooking = [
+    param('conversationId').isInt({ min: 1 }).withMessage('Invalid conversation id.'),
+    body('bookingId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('bookingId must be a positive integer.'),
+    handleValidation,
+];
+
+const validateReviewMessage = [
+    param('messageId').isInt({ min: 1 }).withMessage('Invalid message id.'),
+    body('approve').isBoolean().withMessage('"approve" (boolean) is required.'),
+    handleValidation,
+];
+
 module.exports = {
     validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent,
     validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice,
+    validateStartConversation, validateSendMessage, validatePinBooking, validateReviewMessage,
 };

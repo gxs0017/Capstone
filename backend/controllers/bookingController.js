@@ -389,4 +389,53 @@ const updateBookingStatus = async (req, res) => {
     }
 };
 
-module.exports = { getQuote, createBooking, getMyBookings, updateBookingStatus };
+// ----------------------------------------------------------------
+// GET /bookings/:id — single booking detail (requester, provider, or admin)
+// Used by the chat "pinned booking" context panel so it always shows the
+// current state of that one booking, fetched fresh rather than cached.
+// ----------------------------------------------------------------
+const getBookingById = async (req, res) => {
+    try {
+        const [rows] = await pool.execute(
+            `SELECT b.booking_id, b.status, b.payment_method, b.amount, b.stripe_payment_intent_id,
+                    b.scheduled_date, b.notes, b.booking_date, b.booking_type, b.batch_id,
+                    b.session_number, b.sessions_in_batch, b.price, b.discount_percent,
+                    b.payment_status, b.decline_reason, b.cancelled_at, b.cancel_reason,
+                    CONCAT(cby.first_name, ' ', cby.last_name) AS cancelled_by_name, cby.role AS cancelled_by_role,
+                    s.service_name,
+                    prov.user_id   AS provider_id, prov.first_name AS provider_first_name,
+                    prov.last_name AS provider_last_name, prov.city AS provider_city, prov.province AS provider_province,
+                    req.user_id    AS requester_id, req.first_name AS requester_first_name, req.last_name AS requester_last_name,
+                    r.review_id    AS review_id, r.rating AS review_rating, r.comment AS review_comment
+             FROM bookings b
+             JOIN provider_details pd ON b.provider_detail_id = pd.provider_detail_id
+             JOIN users prov ON pd.user_id = prov.user_id
+             JOIN users req  ON b.requester_id = req.user_id
+             JOIN services s ON b.service_id = s.service_id
+             LEFT JOIN reviews r ON r.booking_id = b.booking_id
+             LEFT JOIN users cby ON b.cancelled_by = cby.user_id
+             WHERE b.booking_id = ?`,
+            [req.params.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Booking not found.' });
+        }
+
+        const booking = rows[0];
+        const isRequester = booking.requester_id === req.user.id;
+        const isProvider  = booking.provider_id === req.user.id;
+        const isAdmin     = req.user.role === 'ADMIN';
+
+        if (!isRequester && !isProvider && !isAdmin) {
+            return res.status(403).json({ message: 'You do not have access to this booking.' });
+        }
+
+        return res.json(toBookingDTOList([booking])[0]);
+    } catch (err) {
+        console.error('getBookingById error:', err);
+        return res.status(500).json({ message: 'Error fetching booking.' });
+    }
+};
+
+module.exports = { getQuote, createBooking, getMyBookings, updateBookingStatus, getBookingById };

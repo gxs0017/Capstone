@@ -6,6 +6,9 @@ const pool = require('../config/db');
 const { toAdminUserDTO, toAdminUserDTOList, toBookingDTOList } = require('../mappers/userMapper');
 const { logAction } = require('../models/AuditLog');
 const { expireStalePending } = require('../utils/bookingExpiry');
+const Chat = require('../models/Chat');
+const { emitToConversation } = require('../config/socket');
+const { toFlaggedMessageDTOList, toMessageDTOList } = require('../mappers/chatMapper');
 
 const BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED', 'DECLINED', 'COMPLETED', 'EXPIRED'];
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -359,4 +362,52 @@ const getAuditLogs = async (req, res) => {
     }
 };
 
-module.exports = { listUsers, getUserById, updateUser, toggleBlock, deleteUser, getStats, listBookings, getAuditLogs };
+// ----------------------------------------------------------------
+// GET /api/admin/chat/flagged — moderation queue of held messages
+// ----------------------------------------------------------------
+const listFlaggedMessages = async (req, res) => {
+    try {
+        const rows = await Chat.listFlaggedMessages(req.query.limit);
+        return res.json(toFlaggedMessageDTOList(rows));
+    } catch (err) {
+        console.error('Admin listFlaggedMessages error:', err);
+        return res.status(500).json({ message: 'Error fetching flagged messages.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// PATCH /api/admin/chat/flagged/:messageId — approve or reject a held message
+// Body: { approve: boolean }
+// Approving delivers it into the conversation (and broadcasts it, same as a
+// normal send); rejecting leaves it permanently hidden from the recipient.
+// ----------------------------------------------------------------
+const reviewFlaggedMessage = async (req, res) => {
+    try {
+        const { approve } = req.body;
+        if (typeof approve !== 'boolean') {
+            return res.status(400).json({ message: 'Field "approve" (boolean) is required.' });
+        }
+
+        const message = await Chat.reviewMessage(req.params.messageId, req.user.id, approve);
+        if (!message) {
+            return res.status(404).json({ message: 'No held message with that id was found.' });
+        }
+
+        logAction(req.user.id, approve ? 'MESSAGE_APPROVED' : 'MESSAGE_REJECTED',
+            'message: ' + message.message_id, req.ip);
+
+        if (approve) {
+            emitToConversation(message.conversation_id, 'message:new', toMessageDTOList([message], null)[0]);
+        }
+
+        return res.json({ message: approve ? 'Message approved and delivered.' : 'Message rejected.' });
+    } catch (err) {
+        console.error('Admin reviewFlaggedMessage error:', err);
+        return res.status(500).json({ message: 'Error reviewing message.' });
+    }
+};
+
+module.exports = {
+    listUsers, getUserById, updateUser, toggleBlock, deleteUser, getStats, listBookings, getAuditLogs,
+    listFlaggedMessages, reviewFlaggedMessage,
+};

@@ -9,6 +9,10 @@
 
   @if (authService.isLoggedIn() && !authService.isAdmin()) {
     <a mat-button routerLink="/my-bookings" routerLinkActive="active-link">My Bookings</a>
+    <a mat-button routerLink="/messages" routerLinkActive="active-link">
+      <span [matBadge]="chatService.unreadTotal()" [matBadgeHidden]="chatService.unreadTotal() === 0"
+            matBadgeColor="warn" matBadgeSize="small">Messages</span>
+    </a>
   }
 
   @if (authService.isLoggedIn() && authService.isProvider()) {
@@ -48,6 +52,11 @@
         <button mat-menu-item routerLink="/my-bookings">
           <mat-icon>event_note</mat-icon>
           <span>My Bookings</span>
+        </button>
+        <button mat-menu-item routerLink="/messages">
+          <mat-icon [matBadge]="chatService.unreadTotal()" [matBadgeHidden]="chatService.unreadTotal() === 0"
+                    matBadgeColor="warn" matBadgeSize="small">forum</mat-icon>
+          <span>Messages</span>
         </button>
       }
       @if (authService.isProvider()) {

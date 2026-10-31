@@ -49,6 +49,26 @@ export interface DashboardStats {
   totalServices: number;
 }
 
+export interface AuditLogEntry {
+  audit_id: number;
+  user_id: number | null;
+  action: string;
+  details: string | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
+export interface FlaggedMessage {
+  messageId: number;
+  conversationId: number;
+  sender: { id: number; firstName: string; lastName: string };
+  content: string;
+  ipAddress: string | null;
+  flagReason: string | null;
+  status: string;
+  createdAt: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly API = `${API_BASE}/admin`;
@@ -95,5 +115,17 @@ export class AdminService {
 
   getStats(): Observable<DashboardStats> {
     return this.http.get<DashboardStats>(`${this.API}/stats`);
+  }
+
+  getAuditLogs(limit = 100): Observable<AuditLogEntry[]> {
+    return this.http.get<AuditLogEntry[]>(`${this.API}/audit-logs`, { params: { limit: String(limit) } });
+  }
+
+  getFlaggedMessages(): Observable<FlaggedMessage[]> {
+    return this.http.get<FlaggedMessage[]>(`${this.API}/chat/flagged`);
+  }
+
+  reviewFlaggedMessage(messageId: number, approve: boolean): Observable<{ message: string }> {
+    return this.http.patch<{ message: string }>(`${this.API}/chat/flagged/${messageId}`, { approve });
   }
 }

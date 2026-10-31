@@ -7,6 +7,8 @@ CREATE DATABASE IF NOT EXISTS bookingapp_db;
 USE bookingapp_db;
 
 -- Drop in reverse FK order so constraints don't block drops
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS conversations;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS bookings;
@@ -175,4 +177,63 @@ CREATE TABLE audit_logs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_audit_user (user_id),
     INDEX idx_audit_created (created_at)
+);
+
+-- ----------------------------------------------------------------
+-- CONVERSATIONS TABLE
+-- One row per *person pair* (not per booking) — any user can message
+-- any other user. participant_one_id is always the smaller user_id of
+-- the pair so the same two people always collide on the same row
+-- regardless of who started the conversation (enforced by the app layer,
+-- see models/Chat.js normalizePair, plus the unique key below as a backstop).
+-- booking_id is the "pinned" booking for this conversation — a participant
+-- can pin/unpin/change it from the chat UI so price, status and the
+-- confirmation number sit at the top of the thread instead of being
+-- asked about repeatedly. NULL = nothing pinned.
+-- ----------------------------------------------------------------
+CREATE TABLE conversations (
+    conversation_id    INT AUTO_INCREMENT PRIMARY KEY,
+    participant_one_id INT NOT NULL,
+    participant_two_id INT NOT NULL,
+    booking_id          INT DEFAULT NULL,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (participant_one_id) REFERENCES users(user_id)    ON DELETE CASCADE  ON UPDATE CASCADE,
+    FOREIGN KEY (participant_two_id) REFERENCES users(user_id)    ON DELETE CASCADE  ON UPDATE CASCADE,
+    FOREIGN KEY (booking_id)         REFERENCES bookings(booking_id) ON DELETE SET NULL ON UPDATE CASCADE,
+    UNIQUE KEY uniq_participant_pair (participant_one_id, participant_two_id)
+);
+
+-- ----------------------------------------------------------------
+-- MESSAGES TABLE
+-- ip_address is captured for every message for incident/abuse investigation
+-- ONLY — it must never be returned by the participant-facing chat API
+-- (see dtos/ChatDTO.js), only ever readable by an admin/DB-level query.
+--
+-- status / flag_reason / reviewed_by / reviewed_at support message
+-- moderation: a message is normally 'SENT' (delivered immediately).
+-- A future automated check (see utils/chatModeration.js, currently a
+-- no-op stub) can mark one 'BLOCKED' with a flag_reason instead of
+-- delivering it; the sender sees a "held for review" placeholder
+-- referencing message_id as the case/blocking id, the recipient sees
+-- nothing. An admin then 'APPROVE's it (delivered after the fact) or
+-- 'REJECT's it (stays hidden permanently).
+-- ----------------------------------------------------------------
+CREATE TABLE messages (
+    message_id      INT AUTO_INCREMENT PRIMARY KEY,
+    conversation_id INT NOT NULL,
+    sender_id       INT NOT NULL,
+    content         TEXT NOT NULL,
+    ip_address      VARCHAR(64) DEFAULT NULL,
+    status          ENUM('SENT','BLOCKED','APPROVED','REJECTED') NOT NULL DEFAULT 'SENT',
+    flag_reason     VARCHAR(255) DEFAULT NULL,
+    reviewed_by     INT DEFAULT NULL,
+    reviewed_at     DATETIME DEFAULT NULL,
+    is_read         BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE  ON UPDATE CASCADE,
+    FOREIGN KEY (sender_id)       REFERENCES users(user_id)                 ON DELETE CASCADE  ON UPDATE CASCADE,
+    FOREIGN KEY (reviewed_by)     REFERENCES users(user_id)                 ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_messages_conversation (conversation_id, created_at),
+    INDEX idx_messages_status (status)
 );
