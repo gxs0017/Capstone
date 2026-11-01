@@ -1,0 +1,173 @@
+.wallet-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.wallet-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.wallet-header p {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 24px;
+}
+
+.wallet-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tab-active {
+  background: var(--mat-sys-primary) !important;
+  color: var(--mat-sys-on-primary) !important;
+  border-color: var(--mat-sys-primary) !important;
+}
+
+.state-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 56px 0;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 56px;
+  width: 56px;
+  height: 56px;
+  opacity: 0.4;
+}
+
+.totals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.total-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--mat-sys-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.total-card--good {
+  background: var(--color-success-bg);
+  border-color: transparent;
+}
+
+.total-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.total-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+}
+
+.total-sub {
+  font-size: 0.78rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.wallet-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--color-info-bg);
+  color: var(--color-info-on-bg);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  margin: 0 0 20px;
+}
+
+.wallet-note mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--mat-sys-surface);
+}
+
+.entry-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.entry-title {
+  font-weight: 600;
+}
+
+.entry-who {
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.entry-sub {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.entry-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.entry-price {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.entry-fee {
+  font-size: 0.72rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.status-chip {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.chip-held     { background: var(--color-warning-bg);  color: var(--color-warning-on-bg); }
+.chip-released { background: var(--color-success-bg);  color: var(--color-success-on-bg); }
+.chip-refunded { background: var(--color-neutral-bg);  color: var(--color-neutral-on-bg); }
+.chip-failed   { background: var(--color-error-bg);    color: var(--color-error-on-bg); }

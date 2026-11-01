@@ -17,6 +17,21 @@ export interface AddAvailabilityPayload {
   endTime: string;   // 'HH:mm'
 }
 
+export interface BookableSlot {
+  time: string;          // 'HH:mm'
+  available: boolean;
+  reason?: 'TOO_SOON' | 'BOOKED';
+}
+
+export interface DaySlots {
+  date: string;          // 'YYYY-MM-DD'
+  sessionMinutes: number;
+  /** false = the provider hasn't set weekly hours; the default 8 AM–8 PM window applies. */
+  publishedHours: boolean;
+  beyondHorizon: boolean;
+  slots: BookableSlot[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AvailabilityService {
   private readonly PROVIDERS_API = `${API_BASE}/providers`;
@@ -27,6 +42,11 @@ export class AvailabilityService {
   // Public lookup — used by the booking calendar to restrict selectable dates/times
   getAvailability(providerId: number): Observable<AvailabilitySlot[]> {
     return this.http.get<AvailabilitySlot[]>(`${this.PROVIDERS_API}/${providerId}/availability`);
+  }
+
+  /** Every start time on a date and whether it can be booked — the same rules the server enforces. */
+  getSlots(providerId: number, date: string): Observable<DaySlots> {
+    return this.http.get<DaySlots>(`${this.PROVIDERS_API}/${providerId}/slots`, { params: { date } });
   }
 
   // Provider self-service management

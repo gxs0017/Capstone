@@ -11,12 +11,28 @@ html {
     (
       color: (
         primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        tertiary: mat.$violet-palette,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: 'Inter',
+        brand-family: 'Inter',
+        bold-weight: 700,
+        medium-weight: 500,
+        regular-weight: 400,
+      ),
       density: 0,
     )
   );
+
+  // Material 3's shape tokens — components read these system variables
+  // directly, so overriding them here (rather than fighting individual
+  // .mat-mdc-* classes) consistently rounds cards, buttons, fields, menus,
+  // etc. app-wide for a softer, more modern feel.
+  --mat-sys-corner-extra-small: 6px;
+  --mat-sys-corner-small: 8px;
+  --mat-sys-corner-medium: 12px;
+  --mat-sys-corner-large: 16px;
+  --mat-sys-corner-extra-large: 24px;
 }
 
 body {

@@ -155,7 +155,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
 }
 
@@ -194,9 +194,37 @@
   margin-top: 8px;
 }
 
+/* Neighbourhood directory settings */
+.directory-section h3 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.directory-hint {
+  margin: 8px 0 14px;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.bio-field {
+  width: 100%;
+}
+
+.directory-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* Actions */
 .actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
 }
+
+.privacy-toggles { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }

@@ -12,10 +12,12 @@ const ProviderDTO = (user, services = []) => ({
     id:          user.user_id ?? user.id,
     firstName:   user.first_name ?? user.firstName,
     lastName:    user.last_name  ?? user.lastName,
-    email:       user.email,
-    phoneNumber: user.phone_number ?? user.phoneNumber ?? null,
+    // Contact details only appear when the provider switched them on (privacy by default).
+    email:       (user.showEmail ?? user.show_email) ? user.email : null,
+    phoneNumber: (user.showPhone ?? user.show_phone) ? (user.phone_number ?? user.phoneNumber ?? null) : null,
     city:        user.city,
     province:    user.province,
+    neighbourhood: user.neighbourhood ?? null,
     role:        user.role,
     services,
 });
@@ -68,9 +70,13 @@ const ProfileDTO = (user, services = []) => ({
     street:      user.street,
     city:        user.city,
     province:    user.province,
+    neighbourhood: user.neighbourhood ?? null,
     postalCode:  user.postal_code ?? user.postalCode,
     role:        user.role,
     isBlocked:   !!(user.is_blocked ?? user.isBlocked),
+    bio:         user.bio ?? null,
+    showEmail:   !!(user.show_email ?? user.showEmail),
+    showPhone:   !!(user.show_phone ?? user.showPhone),
     services,
     createdAt:   user.created_at ?? user.createdAt,
 });

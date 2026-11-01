@@ -23,4 +23,17 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
+// For public pages that look slightly different when you're signed in (e.g. the
+// board marks posts you've liked). A missing or bad token is simply treated as
+// "not signed in" — it never rejects the request.
+authMiddleware.optional = (req, _res, next) => {
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+            req.user = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+        } catch (_) { /* treat as anonymous */ }
+    }
+    next();
+};
+
 module.exports = authMiddleware;

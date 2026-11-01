@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { MatInput } from '@angular/material/input';
@@ -43,6 +43,7 @@ const PAGE_SIZE = 6;
     MatIcon,
     MatProgressSpinner,
     MatTooltipModule,
+    RouterLink,
   ],
   templateUrl: './search.html',
   styleUrl: './search.css',
@@ -78,7 +79,10 @@ export class SearchComponent implements OnInit, OnDestroy {
   loadingReviews    = signal(false);
   providerReviews   = signal<Map<number, Review[]>>(new Map());
 
-  readonly serviceOptions = ['Snow Shovelling', 'Babysitting', 'Tutoring', 'Lawn Mowing'];
+  // Loaded from the server so every service (not just the first four) is filterable
+  // and bookable with its real id.
+  serviceOptions = signal<string[]>([]);
+  private serviceIds = new Map<string, number>();
 
   readonly sortToggles: SortToggle[] = [
     { label: 'Rating', column: 'avgRating',  icon: 'star' },
@@ -88,6 +92,10 @@ export class SearchComponent implements OnInit, OnDestroy {
   ];
 
   ngOnInit(): void {
+    this.searchService.getServices().subscribe((services) => {
+      this.serviceIds = new Map(services.map((s) => [s.serviceName, s.serviceId]));
+      this.serviceOptions.set(services.filter((s) => s.providerCount > 0).map((s) => s.serviceName));
+    });
     this.loadProviders();
 
     // Auto-filter when service type changes
@@ -258,9 +266,8 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   bookNow(provider: Provider, service: string): void {
-    // Look up serviceId from the serviceOptions or pass 0 as fallback
-    const serviceIndex = this.serviceOptions.indexOf(service);
-    const serviceId = serviceIndex >= 0 ? serviceIndex + 1 : 0; // IDs are 1-indexed in DB
+    // The service's real id, as the server knows it
+    const serviceId = this.serviceIds.get(service) ?? 0;
     this.router.navigate(['/booking'], { state: { provider, service, serviceId } });
   }
 }

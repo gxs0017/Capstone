@@ -29,10 +29,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--color-error-bg);
+  color: var(--color-error-on-bg);
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   margin-bottom: 20px;
 }
@@ -41,16 +41,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #ecfdf5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-on-bg);
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   margin-bottom: 20px;
 }
 
 .availability-card {
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 
 .section-label {
@@ -79,7 +79,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
 }
 

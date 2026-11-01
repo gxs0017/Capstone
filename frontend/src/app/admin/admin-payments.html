@@ -1,0 +1,51 @@
+<div class="payments-tab">
+  <div class="payments-head">
+    <h2>Payments ledger</h2>
+    <button mat-stroked-button (click)="settle()" [disabled]="settling()">
+      <mat-icon>sync</mat-icon> Release completed &amp; retry refunds
+    </button>
+  </div>
+
+  @if (error()) { <p class="payments-error">{{ error() }}</p> }
+
+  @if (loading() && !data()) {
+    <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+  }
+
+  @if (data(); as d) {
+    <div class="payments-totals">
+      @for (s of statuses; track s) {
+        <div class="payments-total">
+          <span class="payments-total-label">{{ s.replace('_', ' ') }}</span>
+          <strong>{{ total(s).gross | currency: d.currency }}</strong>
+          <span>{{ total(s).count }} payment(s) · fees {{ total(s).fees | currency: d.currency }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="payments-table-wrap">
+      <table class="payments-table">
+        <thead>
+          <tr><th>#</th><th>Booking</th><th>Payer</th><th>Provider</th><th>Method</th><th>Amount</th><th>Fee</th><th>Status</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          @for (e of d.entries; track e.paymentId) {
+            <tr>
+              <td>{{ e.paymentId }}</td>
+              <td>#{{ e.bookingId }} {{ e.service }}</td>
+              <td>{{ e.payer.name }}</td>
+              <td>{{ e.provider.name }}</td>
+              <td>{{ e.method }}</td>
+              <td>{{ e.amount | currency: e.currency }}</td>
+              <td>{{ e.platformFee | currency: e.currency }}</td>
+              <td>{{ e.status }}@if (e.refundError) { <br><small class="payments-error">{{ e.refundError }}</small> }</td>
+              <td>{{ e.createdAt | date: 'mediumDate' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="9">No payments yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

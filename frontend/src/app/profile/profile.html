@@ -41,7 +41,7 @@
                 <mat-icon class="detail-icon">location_on</mat-icon>
                 <div>
                   <span class="detail-label">Location</span>
-                  <span class="detail-value">{{ user?.city }}, {{ user?.province }}</span>
+                  <span class="detail-value">{{ user?.neighbourhood ? user?.neighbourhood + ' · ' : '' }}{{ user?.city }}, {{ user?.province }}</span>
                 </div>
               </div>
             }
@@ -87,25 +87,25 @@
                 </div>
               }
 
-              <!-- Add Service -->
-              @if (addableServices().length > 0) {
-                <div class="add-service-row">
-                  <mat-form-field appearance="outline" class="add-service-field">
-                    <mat-label>Add a service</mat-label>
-                    <mat-select [formControl]="serviceToAdd">
-                      @for (svc of addableServices(); track svc.service_id) {
-                        <mat-option [value]="svc.service_id">{{ svc.service_name }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                  <input type="number" class="add-price-input" min="0" step="0.01" [formControl]="priceToAdd" placeholder="Price $" />
-                  <button mat-raised-button color="primary"
-                          (click)="addService()"
-                          [disabled]="!serviceToAdd.value || serviceLoading()">
-                    <mat-icon>add</mat-icon> Add
-                  </button>
-                </div>
-              }
+              <!-- Add any service: type it, press Enter, it becomes a tag -->
+              <div class="add-service-row">
+                <mat-form-field appearance="outline" class="add-service-field">
+                  <mat-label>Add a service</mat-label>
+                  <input matInput [formControl]="serviceToAdd" list="service-suggestions" maxlength="40"
+                         placeholder="e.g. Dog walking, Piano lessons" (keydown.enter)="addService()" />
+                  <datalist id="service-suggestions">
+                    @for (svc of addableServices(); track svc.service_id) {
+                      <option [value]="svc.service_name"></option>
+                    }
+                  </datalist>
+                </mat-form-field>
+                <input type="number" class="add-price-input" min="0" step="0.01" [formControl]="priceToAdd" placeholder="Price $" />
+                <button mat-raised-button color="primary"
+                        (click)="addService()"
+                        [disabled]="!serviceToAdd.value.trim() || serviceLoading()">
+                  <mat-icon>add</mat-icon> Add
+                </button>
+              </div>
 
               @if (serviceMessage()) {
                 <p class="service-message">{{ serviceMessage() }}</p>
@@ -117,12 +117,65 @@
             </div>
           }
 
+          <!-- Provider: public listing + contact privacy -->
+          @if (user?.role === 'PROVIDER') {
+            <mat-divider class="divider"></mat-divider>
+            <div class="directory-section">
+              <h3>
+                <mat-icon class="section-icon">storefront</mat-icon>
+                Your public listing
+              </h3>
+              <p class="directory-hint">
+                People find you in Browse Services and the Directory, and on your
+                <a [routerLink]="['/providers', user?.id]">storefront page</a>. Add a short bio so neighbours know who you are.
+              </p>
+
+              <mat-form-field appearance="outline" class="bio-field">
+                <mat-label>About me</mat-label>
+                <textarea matInput rows="3" maxlength="300" [formControl]="bio"
+                          placeholder="e.g. Brampton local, 10 years of lawn care experience"></textarea>
+                <mat-hint align="end">{{ bio.value?.length || 0 }}/300</mat-hint>
+              </mat-form-field>
+
+              <div class="directory-actions">
+                <button mat-raised-button color="primary" (click)="saveDirectory()" [disabled]="savingDirectory()">
+                  <mat-icon>save</mat-icon> Save
+                </button>
+                @if (directoryMessage()) { <span class="service-message">{{ directoryMessage() }}</span> }
+              </div>
+            </div>
+
+            <mat-divider class="divider"></mat-divider>
+            <div class="directory-section">
+              <h3>
+                <mat-icon class="section-icon">visibility</mat-icon>
+                Who can see my contact details?
+              </h3>
+              <p class="directory-hint">
+                Both are hidden by default. Customers can always reach you through <strong>Message</strong> and
+                <strong>Book</strong>, which keep the conversation and payment inside NeighbourBook.
+              </p>
+              <div class="privacy-toggles">
+                <mat-slide-toggle [checked]="!!user?.showEmail" (change)="setContactPref('showEmail', $event.checked)">
+                  Show my email on my public profile
+                </mat-slide-toggle>
+                <mat-slide-toggle [checked]="!!user?.showPhone" (change)="setContactPref('showPhone', $event.checked)">
+                  Show my phone number on my public profile
+                </mat-slide-toggle>
+              </div>
+              @if (contactMessage()) { <p class="service-message">{{ contactMessage() }}</p> }
+            </div>
+          }
+
           <mat-divider class="divider"></mat-divider>
 
           <div class="actions">
             @if (user?.role === 'REQUESTER' || user?.role === 'PROVIDER') {
               <a mat-stroked-button routerLink="/my-bookings">
                 <mat-icon>event_note</mat-icon> My Bookings
+              </a>
+              <a mat-stroked-button routerLink="/wallet">
+                <mat-icon>account_balance_wallet</mat-icon> Payments
               </a>
             }
             @if (user?.role === 'PROVIDER') {

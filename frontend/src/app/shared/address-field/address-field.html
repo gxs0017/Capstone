@@ -1,0 +1,60 @@
+<div [formGroup]="group()" class="address-field">
+  @if (!manual()) {
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Start typing your street address</mat-label>
+      <input matInput [formControl]="query" (input)="onType()" autocomplete="off" placeholder="123 Main St, Brampton" />
+      <mat-icon matSuffix>{{ chosen() ? 'check_circle' : 'search' }}</mat-icon>
+    </mat-form-field>
+
+    @if (searching()) { <p class="hint">Searching…</p> }
+    @if (unavailable()) { <p class="hint warn">Address search is unavailable right now. Please enter your address manually.</p> }
+
+    @if (results().length) {
+      <ul class="suggestions">
+        @for (s of results(); track s.label) {
+          <li><button type="button" (click)="pick(s)">
+            <mat-icon>place</mat-icon>
+            <span><strong>{{ s.street }}</strong>, {{ s.city }}, {{ s.province }} {{ s.postalCode }}</span>
+          </button></li>
+        }
+      </ul>
+    } @else if (searched() && !chosen() && !searching() && !unavailable()) {
+      <p class="hint">No matching address found. Try adding the city, or enter it manually.</p>
+    }
+
+    @if (chosen(); as c) {
+      <div class="chosen">
+        <mat-icon>verified</mat-icon>
+        <div>
+          <strong>{{ c.street }}</strong><br />
+          {{ c.city }}, {{ c.province }} {{ c.postalCode }}
+          @if (c.suburb) { <span class="area"> · {{ c.suburb }}</span> }
+        </div>
+      </div>
+    }
+    <button mat-button type="button" class="link" (click)="startManual()">Enter it manually instead</button>
+  } @else {
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Street</mat-label>
+      <input matInput formControlName="street" />
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>City</mat-label>
+        <input matInput formControlName="city" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Province</mat-label>
+        <mat-select formControlName="province">
+          @for (p of provinces; track p.code) { <mat-option [value]="p.code">{{ p.name }}</mat-option> }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Postal code</mat-label>
+      <input matInput formControlName="postalCode" placeholder="A1B 2C3" />
+    </mat-form-field>
+    @if (postalMismatch(); as problem) { <p class="hint warn">{{ problem }}</p> }
+    <button mat-button type="button" class="link" (click)="manual.set(false)">Search for my address instead</button>
+  }
+</div>

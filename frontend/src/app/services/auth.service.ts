@@ -13,6 +13,8 @@ export interface UserProfile {
   role: string;
   city?: string;
   province?: string;
+  /** Area inside the city, worked out automatically from the address. */
+  neighbourhood?: string | null;
   phoneNumber?: string;
   dateOfBirth?: string;
   street?: string;
@@ -20,6 +22,11 @@ export interface UserProfile {
   isBlocked?: boolean;
   services?: string[];
   createdAt?: string;
+  /** Short "about me" shown on the directory and provider pages. */
+  bio?: string | null;
+  /** Provider privacy switches: show email / phone to other people (both off by default). */
+  showEmail?: boolean;
+  showPhone?: boolean;
 }
 
 @Injectable({
@@ -59,6 +66,26 @@ export class AuthService {
   /** Fetch fresh profile from backend and update local state */
   refreshProfile(): Observable<UserProfile> {
     return this.http.get<UserProfile>(`${this.API}/profile`).pipe(
+      tap((user) => {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+        this.currentUser.set(user);
+      })
+    );
+  }
+
+  /** Providers: choose whether other people can see their email / phone number. */
+  updateContactPrefs(changes: { showEmail?: boolean; showPhone?: boolean }): Observable<UserProfile> {
+    return this.http.patch<UserProfile>(`${this.API}/profile/contact`, changes).pipe(
+      tap((user) => {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+        this.currentUser.set(user);
+      })
+    );
+  }
+
+  /** Providers: edit the bio shown on the directory and storefront. */
+  updateDirectoryProfile(changes: { bio?: string | null }): Observable<UserProfile> {
+    return this.http.patch<UserProfile>(`${this.API}/profile/directory`, changes).pipe(
       tap((user) => {
         localStorage.setItem(this.USER_KEY, JSON.stringify(user));
         this.currentUser.set(user);

@@ -29,17 +29,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--color-error-bg);
+  color: var(--color-error-on-bg);
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   margin-bottom: 20px;
 }
 
 /* Summary card */
 .summary-card {
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   margin-bottom: 20px;
 }
 
@@ -151,7 +151,7 @@
   background: var(--mat-sys-surface-container-low, #f0f4ff);
   color: var(--mat-sys-on-surface-variant);
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.8rem;
   margin-bottom: 16px;
   line-height: 1.4;
@@ -179,14 +179,14 @@
 /* Confirmation */
 .confirmation-card {
   text-align: center;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 
 .confirm-icon {
   font-size: 72px;
   width: 72px;
   height: 72px;
-  color: #059669;
+  color: var(--color-success);
   margin-bottom: 12px;
 }
 
@@ -239,7 +239,7 @@
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -252,8 +252,8 @@
 }
 
 .status-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-on-bg);
 }
 
 /* Payment method */
@@ -311,7 +311,7 @@
 
 .type-card {
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 8px 12px;
 }
 
@@ -332,9 +332,9 @@
 .type-price small { font-weight: 400; font-size: 0.75rem; }
 
 .discount-chip {
-  background: #d1fae5;
-  color: #065f46;
-  border-radius: 10px;
+  background: var(--color-success-bg);
+  color: var(--color-success-on-bg);
+  border-radius: var(--radius-pill);
   padding: 1px 8px;
   font-size: 0.7rem;
   font-weight: 700;
@@ -362,7 +362,7 @@
 
 .price-summary {
   background: var(--mat-sys-surface-container-low);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 12px 16px;
   margin: 8px 0 12px;
 }
@@ -374,7 +374,7 @@
   padding: 2px 0;
 }
 
-.price-row.savings { color: #065f46; }
+.price-row.savings { color: var(--color-success-on-bg); }
 
 .price-row.total {
   font-weight: 700;
@@ -390,6 +390,96 @@
   font-size: 0.8rem;
   color: var(--mat-sys-on-surface-variant);
   margin: 0;
+}
+
+/* Time-slot picker */
+.slot-section {
+  margin: 0 0 16px;
+}
+
+.slot-hint {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.slot-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+  padding: 8px 0;
+}
+
+.slot-label {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.slot-duration {
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.slot-chip {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 9px 6px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.slot-chip:hover:not(:disabled) {
+  border-color: var(--mat-sys-primary);
+  background: var(--mat-sys-primary-container);
+}
+
+.slot-chip--selected,
+.slot-chip--selected:hover:not(:disabled) {
+  background: var(--mat-sys-primary);
+  border-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.slot-chip--taken {
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-outline);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.slot-legend {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.selection-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-success-bg);
+  color: var(--color-success-on-bg);
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 600px) {

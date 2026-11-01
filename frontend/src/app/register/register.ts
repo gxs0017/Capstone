@@ -11,6 +11,9 @@ import { AuthService } from '../services/auth.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { CommonModule } from '@angular/common';
+import { AddressFieldComponent, createAddressGroup } from '../shared/address-field/address-field';
+import { ServiceTagsComponent } from '../shared/service-tags/service-tags';
+import { SearchService } from '../services/search';
 
 @Component({
   selector: 'app-register',
@@ -28,13 +31,16 @@ import { CommonModule } from '@angular/common';
     MatButton,
     MatIcon,
     RouterLink,
+    AddressFieldComponent,
+    ServiceTagsComponent,
   ],
   templateUrl: './register.html',
   styleUrls: ['./register.css'],
 })
 export class RegisterComponent {
   Role = Role;
-  items = ['Snow Shovelling', 'Babysitting', 'Tutoring', 'Lawn Mowing'];
+  /** Services other providers already offer, offered as one-click suggestions (providers can type any service). */
+  suggestions = signal<string[]>([]);
 
   errorMessage = signal('');
   successMessage = signal('');
@@ -53,20 +59,15 @@ export class RegisterComponent {
     ]),
     email: new FormControl('', [Validators.required, Validators.email]),
     password: new FormControl('', [Validators.required, Validators.minLength(8)]),
-    addressForm: new FormGroup({
-      street: new FormControl('', [Validators.required]),
-      city: new FormControl('', [Validators.required]),
-      province: new FormControl('', [Validators.required]),
-      postalCode: new FormControl('', [
-        Validators.required,
-        Validators.pattern(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/),
-      ]),
-    }),
+    addressForm: this.buildAddressGroup(),
     role: new FormControl<Role | null>(null, [Validators.required]),
     services: new FormControl<string[]>([]),
   });
 
-  constructor(private authService: AuthService, private router: Router) {
+  constructor(private authService: AuthService, private router: Router, private searchService: SearchService) {
+    this.searchService.getServices().subscribe((list) =>
+      this.suggestions.set(list.filter((x) => x.providerCount > 0).sort((a, b) => b.providerCount - a.providerCount).map((x) => x.serviceName))
+    );
     this.registerForm.get('role')?.valueChanges.subscribe((role) => {
       const servicesControl = this.registerForm.get('services');
       if (role === 'PROVIDER') {
@@ -77,6 +78,21 @@ export class RegisterComponent {
       }
       servicesControl?.updateValueAndValidity();
     });
+  }
+
+  /** The address box edits this group; city / province / postal code are filled in together. */
+  private buildAddressGroup() {
+    const g = createAddressGroup();
+    g.controls.street.addValidators([Validators.required]);
+    g.controls.city.addValidators([Validators.required]);
+    g.controls.province.addValidators([Validators.required]);
+    g.controls.postalCode.addValidators([Validators.required, Validators.pattern(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/)]);
+    return g;
+  }
+
+  setServices(list: string[]) {
+    this.registerForm.get('services')?.setValue(list);
+    this.registerForm.get('services')?.markAsTouched();
   }
 
   register() {

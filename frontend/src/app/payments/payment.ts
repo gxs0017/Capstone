@@ -1,177 +1,107 @@
-// Created by Broinson Jeyarajah
-// Student Number: 91568803
-
-//-------REFERENCES USED---------
-// https://docs.stripe.com/payments/payment-element/migration
-//https://ngx-stripe.dev/docs/payment-element
-//https://docs.stripe.com/keys
-//https://docs.stripe.com/elements/appearance-api
-//https://docs.stripe.com/api/payment_intents
-  //https://angular.dev/guide/http/making-requests
-//Previous course/lecture material – Angula  Mobile Web-based Applications/Hyprid Mobile Web
-
-//IMPORTS FROM ANGULAR
 import { CommonModule } from '@angular/common';
-import {  Component, OnInit, ViewChild, inject, signal,} 
-from '@angular/core';
-
-import { STRIPE_PUBLISHABLE_KEY } from '../core/stripe.config';
-import { StripePaymentService } from '../services/stripe-payment.service';
-
+import { Component, OnInit, inject, signal, NgZone } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
+import { PaymentService, PaymentSummary } from '../services/payment.service';
+import { CardPaymentComponent } from './card-payment';
 
+type Method = 'paypal' | 'card';
 
-//IMPORTS FROM STRIPE
-import {StripeElementsDirective, StripePaymentElementComponent, injectStripe,}  from 'ngx-stripe';
-import { StripeElementsOptions } from '@stripe/stripe-js';
-
-
+/** One page to pay for a booking — or a whole weekly pack — by PayPal or card.
+ *  The total shown here is computed by the server from the stored booking
+ *  price(s); the page never sends an amount. */
 @Component({
   selector: 'app-payment',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    MatButton,
-    MatCard,
-    MatCardContent,
-    MatIcon,
-    MatProgressSpinner,
-    StripeElementsDirective,
-    StripePaymentElementComponent,
-  ],
+  imports: [CommonModule, RouterLink, MatButton, MatCard, MatCardContent, MatIcon, MatProgressSpinner, CardPaymentComponent],
   templateUrl: './payment.html',
   styleUrl: './payment.css',
 })
-
-
-//-----------------PAYMENT COMPONENT----------------
 export class PaymentComponent implements OnInit {
-
-  @ViewChild(StripePaymentElementComponent)
-  paymentElement!: StripePaymentElementComponent;
-
-  //Declare private varaaibles for routes for payement service 
   private route = inject(ActivatedRoute);
-  private paymentService = inject(StripePaymentService);
-  private bookingId!: number;
+  private paymentService = inject(PaymentService);
+  private zone = inject(NgZone);
 
-  //Inject Stripe service using the publishable key
-  stripe = injectStripe(STRIPE_PUBLISHABLE_KEY);
-
-  //Declare signals for all operations
+  bookingId = 0;
+  summary = signal<PaymentSummary | null>(null);
   loading = signal(true);
-  PaymentPROCESSING = signal(false);
   error = signal('');
   success = signal(false);
-  amount = signal(0);
 
-  // Set the Stripe Elements options
-  elementsOptions: StripeElementsOptions = {};
-
+  method = signal<Method | null>(null);
+  paypalError = signal('');
+  paypalLoading = signal(false);
+  private paypalRendered = false;
 
   ngOnInit(): void {
-    this.bookingId = Number(this.route.snapshot.paramMap.get('bookingId') 
-  );
-
-  //if not number, invalid booking, set error and stop loading
-      if (!Number.isInteger(this.bookingId)) { 
-          this.error.set('Invalid booking.');
-          this.loading.set(false);
-          return;
-      } 
-      else if(this.bookingId < 1) {
-        this.error.set('Invalid booking.');
-          
-
-      // Payment form is ready
-        this.loading.set(false);
-          return;
+    this.bookingId = Number(this.route.snapshot.paramMap.get('bookingId'));
+    if (!Number.isInteger(this.bookingId) || this.bookingId < 1) {
+      this.error.set('Invalid booking.');
+      this.loading.set(false);
+      return;
     }
 
-// Call payment service to create payment intent for the booking
-    this.paymentService.createPaymentIntent(this.bookingId)
-     
-    .subscribe({ next: (paymentIntent) => {
-            this.amount.set(paymentIntent.amount);
-    
-           // Set the client secret for the Stripe Elements options        
-          this.elementsOptions = {clientSecret: paymentIntent.clientSecret};
-
-         // Set loading to false since we cannot proceed with payment
-          this.loading.set(false);
-        },
-
-        error: () => { // Handle error when creating payment intent
-          this.error.set('Unable to start the payment. Please try again!');
-           this.loading.set(false);
-         },
-      });
+    this.paymentService.getSummary(this.bookingId).subscribe({
+      next: (summary) => {
+        this.summary.set(summary);
+        this.loading.set(false);
+        if (summary.methods.paypal) this.choose('paypal');
+        else if (summary.methods.stripe) this.choose('card');
+        else this.error.set('Online payments are not available right now. You can pay on arrival instead.');
+      },
+      error: (err) => {
+        this.error.set(err?.error?.message || 'Unable to load this payment.');
+        this.loading.set(false);
+      },
+    });
   }
 
+  choose(method: Method): void {
+    this.method.set(method);
+    if (method === 'paypal' && !this.paypalRendered) {
+      this.paypalRendered = true;
+      // Wait a tick for the PayPal container to exist in the DOM
+      setTimeout(() => this.renderPaypal(), 0);
+    }
+  }
 
-//Pay function to handle the payment process
-  pay(): void {
-    // Prevent duplicate payments
+  onCardPaid(): void {
+    this.success.set(true);
+  }
 
-    if (this.PaymentPROCESSING())
-   { 
-       return;
-   }
-
-  // Start payment processing and clear old errors - Signals
-    this.PaymentPROCESSING.set(true);
-    this.error.set('');
-
-
-    this.stripe.confirmPayment({
-        elements: this.paymentElement.elements,
-        redirect: 'if_required',
-      })
-    
-      //failed payment
-      .subscribe({next: (result) => {
-      
-          if (result.error) {
-              this.PaymentPROCESSING.set(false);
-              return;
-          }
-
-      
-          if ( result.paymentIntent.status === 'succeeded')  
-          {
-            this.paymentService.confirmPayment(this.bookingId, result.paymentIntent.id)
-              
-            // Handle the response from the confirmPayment call
-            .subscribe({
-                next: () => {
-                  this.PaymentPROCESSING.set(false);
-                  this.success.set(true);
-                },
-                 error: () => {
-                 this.PaymentPROCESSING.set(false);
-                 this.error.set('Payment succeeded but was not saved!');
-                 },
-              });
-            }
-      
-            else { 
-                 this.PaymentPROCESSING.set(false);
-                this.error.set('Payment was not completed. Please re-try again.');
+  private async renderPaypal(): Promise<void> {
+    this.paypalLoading.set(true);
+    try {
+      const cfg = await this.paymentService.getConfig();
+      if (!cfg.clientId) {
+        this.zone.run(() => this.paypalError.set('PayPal is not configured.'));
+        return;
+      }
+      const paypal = await this.paymentService.loadSdk(cfg.clientId, cfg.currency);
+      this.zone.run(() => this.paypalLoading.set(false));
+      paypal.Buttons({
+        createOrder: async () => (await this.paymentService.createOrder(this.bookingId)).orderId,
+        onApprove: async () => {
+          try {
+            await this.paymentService.capture(this.bookingId);
+            this.zone.run(() => this.success.set(true));
+          } catch (e: any) {
+            this.zone.run(() => this.paypalError.set(
+              e?.error?.message || 'Payment could not be completed. You can try again below.'
+            ));
           }
         },
-
-        //error has issue in the payment processing
-        error: () => {
-          this.PaymentPROCESSING.set(false);
-          this.error.set('Payment could not be completed. Please re-try again.');
-
-        },
-      });
+        onCancel: () => this.zone.run(() => this.paypalError.set('Payment cancelled — you can try again.')),
+        onError: () => this.zone.run(() => this.paypalError.set('PayPal ran into a problem. Please try again.')),
+      }).render('#paypal-button-container');
+    } catch {
+      this.zone.run(() => this.paypalError.set('Could not load PayPal. Please try again.'));
+    } finally {
+      this.zone.run(() => this.paypalLoading.set(false));
+    }
   }
 }

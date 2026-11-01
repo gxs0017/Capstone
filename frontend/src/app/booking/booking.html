@@ -6,7 +6,7 @@
       <mat-icon>arrow_back</mat-icon> Back to Search
     </button>
 
-    @if (!confirmed() && !showPayment()) {
+    @if (!confirmed()) {
       <!-- Page heading -->
       <div class="booking-header">
         <h1>Review & Confirm</h1>
@@ -56,27 +56,63 @@
           @if (availability().length > 0) {
             <div class="availability-hint">
               <mat-icon class="availability-icon">event_available</mat-icon>
-              <span>{{ getAvailabilityLabel() }}</span>
+              <span><strong>{{ provider()!.firstName }}'s weekly hours:</strong> {{ getAvailabilityLabel() }}</span>
+            </div>
+          } @else {
+            <div class="availability-hint">
+              <mat-icon class="availability-icon">info</mat-icon>
+              <span>{{ provider()!.firstName }} hasn't published weekly hours yet, so you can request any time between 8:00 AM and 8:00 PM — they'll confirm it.</span>
             </div>
           }
 
-          <div class="datetime-row">
-            <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Preferred Date</mat-label>
-              <input matInput [matDatepicker]="picker" [formControl]="scheduledDate"
-                     [matDatepickerFilter]="dateFilter" [min]="minDate"
-                     (click)="picker.open()" readonly />
-              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-              <mat-datepicker #picker></mat-datepicker>
-            </mat-form-field>
+          <!-- Step 1: the day -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Date</mat-label>
+            <input matInput [matDatepicker]="picker" [formControl]="scheduledDate"
+                   [matDatepickerFilter]="dateFilter" [min]="minDate" [max]="maxDate"
+                   (click)="picker.open()" readonly />
+            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+          </mat-form-field>
 
-            <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Preferred Time</mat-label>
-              <input matInput [matTimepicker]="timePicker" [formControl]="scheduledTime"
-                     [matTimepickerMin]="timeMin()" [matTimepickerMax]="timeMax()" />
-              <mat-timepicker-toggle matIconSuffix [for]="timePicker"></mat-timepicker-toggle>
-              <mat-timepicker #timePicker interval="30m"></mat-timepicker>
-            </mat-form-field>
+          <!-- Step 2: the time — only real, open slots can be picked -->
+          <div class="slot-section">
+            @if (!scheduledDate.value) {
+              <p class="slot-hint">Pick a date to see the available start times.</p>
+            } @else if (slotsLoading()) {
+              <div class="slot-loading">
+                <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                <span>Loading available times…</span>
+              </div>
+            } @else if (daySlots(); as ds) {
+              @if (ds.slots.length === 0) {
+                <p class="slot-hint">{{ provider()!.firstName }} isn't taking bookings on this day. Try another date.</p>
+              } @else {
+                <p class="slot-label">Start time <span class="slot-duration">({{ ds.sessionMinutes }}-minute session)</span></p>
+                <div class="slot-grid" role="radiogroup" aria-label="Available start times">
+                  @for (s of ds.slots; track s.time) {
+                    <button type="button" class="slot-chip"
+                            [class.slot-chip--selected]="selectedTime() === s.time"
+                            [class.slot-chip--taken]="!s.available"
+                            [disabled]="!s.available"
+                            [attr.title]="slotTooltip(s.reason)"
+                            [attr.aria-checked]="selectedTime() === s.time"
+                            role="radio"
+                            (click)="selectTime(s.time)">
+                      {{ formatTimeLabel(s.time) }}
+                    </button>
+                  }
+                </div>
+                <p class="slot-legend">Greyed-out times are already booked or too soon to book.</p>
+              }
+            }
+
+            @if (selectionLabel(); as label) {
+              <div class="selection-summary">
+                <mat-icon>event</mat-icon>
+                <span>{{ label }}</span>
+              </div>
+            }
           </div>
 
           <mat-form-field appearance="outline" class="full-width">
@@ -93,7 +129,7 @@
             <mat-radio-button value="ONE_TIME" class="type-card">
               <div class="type-body">
                 <span class="payment-title">One-time</span>
-                <span class="payment-desc">Single session, pay on arrival</span>
+                <span class="payment-desc">A single session</span>
               </div>
               @if (oneTimeQuote(); as q) {
                 <span class="type-price">{{ q.total | currency }}</span>
@@ -154,7 +190,7 @@
                 </div>
               }
               <div class="price-row total">
-                <span>{{ isRecurring() ? 'Total due now' : 'Total (pay on arrival)' }}</span>
+                <span>{{ isOnline() ? 'Total due now' : 'Total (pay on arrival)' }}</span>
                 <span>{{ q.total | currency }}</span>
               </div>
             </div>
@@ -177,42 +213,35 @@
           <p class="section-label">Payment Method</p>
           @if (isRecurring()) {
             <div class="payment-option">
-              <mat-icon class="payment-icon">credit_score</mat-icon>
+              <mat-icon class="payment-icon">lock</mat-icon>
               <div>
-                <span class="payment-title">Pay Upfront</span>
-                <span class="payment-desc">The whole pack is paid now (demo, no real charge yet)</span>
+                <span class="payment-title">Pay online, once, for the whole pack</span>
+                <span class="payment-desc">You'll pay on the next step. The money is held securely and released to the provider as each job is completed — cancel in time and it's refunded.</span>
               </div>
             </div>
           } @else {
             <div class="payment-options">
-              <mat-radio-group [formControl]="paymentMethod">
-                <mat-radio-button value="pay_on_arrival" class="payment-radio">
+              <mat-radio-group [formControl]="payChoice">
+                <mat-radio-button value="arrival" class="payment-radio">
                   <div class="payment-option">
                     <mat-icon class="payment-icon">payments</mat-icon>
                     <div>
-                      <span class="payment-title">Pay on Arrival</span>
-                      <span class="payment-desc">Pay the provider in person when they arrive</span>
+                      <span class="payment-title">Pay on arrival</span>
+                      <span class="payment-desc">Pay the provider directly when they arrive</span>
                     </div>
                   </div>
                 </mat-radio-button>
-                <mat-radio-button value="paypal" class="payment-radio">
-                  <div class="payment-option">
-                    <mat-icon class="payment-icon">account_balance_wallet</mat-icon>
-                    <div>
-                      <span class="payment-title">Pay Online &mdash; PayPal</span>
-                      <span class="payment-desc">Pay securely with PayPal</span>
+                @if (onlinePaymentAvailable()) {
+                  <mat-radio-button value="online" class="payment-radio">
+                    <div class="payment-option">
+                      <mat-icon class="payment-icon">lock</mat-icon>
+                      <div>
+                        <span class="payment-title">Pay securely online</span>
+                        <span class="payment-desc">Pay on the next step with PayPal or card. The money is held until the job is done, and refunded if the booking is cancelled in time.</span>
+                      </div>
                     </div>
-                  </div>
-                </mat-radio-button>
-                <mat-radio-button value="stripe" class="payment-radio">
-                  <div class="payment-option">
-                    <mat-icon class="payment-icon">credit_card</mat-icon>
-                    <div>
-                      <span class="payment-title">Pay Online &mdash; Card</span>
-                      <span class="payment-desc">Pay by credit or debit card with Stripe</span>
-                    </div>
-                  </div>
-                </mat-radio-button>
+                  </mat-radio-button>
+                }
               </mat-radio-group>
             </div>
           }
@@ -228,33 +257,15 @@
               <mat-progress-spinner mode="indeterminate" diameter="20" class="btn-spinner"></mat-progress-spinner>
               Booking...
             } @else {
-              <mat-icon>check_circle</mat-icon> Confirm Booking
+              <mat-icon>{{ isOnline() ? 'lock' : 'check_circle' }}</mat-icon>
+              {{ isOnline() ? 'Continue to payment' : 'Confirm Booking' }}
             }
           </button>
         </mat-card-actions>
       </mat-card>
     }
 
-    @if (showPayment()) {
-      <mat-card class="payment-card">
-        <mat-card-content>
-          <h2>Complete Payment</h2>
-          <p>Pay securely with PayPal to confirm your booking.</p>
-          @if (paymentError()) {
-            <div class="error-banner"><mat-icon>error_outline</mat-icon> {{ paymentError() }}</div>
-            <p class="payment-retry-hint">You can try the PayPal button again below, or come back to pay later from My Bookings.</p>
-          }
-          <div id="paypal-button-container"></div>
-          @if (paymentError()) {
-            <a mat-stroked-button routerLink="/my-bookings" class="skip-payment-link">
-              <mat-icon>event_note</mat-icon> View My Bookings
-            </a>
-          }
-        </mat-card-content>
-      </mat-card>
-    }
-
-    <!-- Confirmation view -->
+    <!-- Confirmation view (pay-on-arrival bookings; online payments finish on the payment page) -->
     @if (confirmed()) {
       <div class="confirmation">
         <mat-card class="confirmation-card">
@@ -285,27 +296,15 @@
               <div class="confirm-row">
                 <span class="confirm-label">Payment</span>
                 <span class="confirm-value">
-                  {{ confirmedType() === 'RECURRING' ? 'Paid upfront' : (paid() ? 'Paid with PayPal' : 'Pay on Arrival') }}
+                  Pay on arrival
                   @if (confirmedQuote(); as q) { · {{ q.total | currency }} }
                 </span>
               </div>
-              @if (confirmedType() === 'RECURRING') {
-                <div class="confirm-row">
-                  <span class="confirm-label">Sessions</span>
-                  <span class="confirm-value">{{ recurringDates().length }} weekly</span>
-                </div>
-              }
               <div class="confirm-row">
                 <span class="confirm-label">Status</span>
-                @if (paid()) {
-                  <span class="status-badge status-confirmed">
-                    <mat-icon class="status-icon">check_circle</mat-icon> PAID
-                  </span>
-                } @else {
-                  <span class="status-badge status-pending">
-                    <mat-icon class="status-icon">pending</mat-icon> PENDING
-                  </span>
-                }
+                <span class="status-badge status-pending">
+                  <mat-icon class="status-icon">pending</mat-icon> PENDING PROVIDER CONFIRMATION
+                </span>
               </div>
             </div>
 

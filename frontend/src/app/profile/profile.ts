@@ -10,6 +10,8 @@ import { MatSelect, MatOption } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatInput } from '@angular/material/input';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
@@ -28,6 +30,8 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
     MatFormFieldModule,
     MatProgressSpinner,
     MatTooltipModule,
+    MatSlideToggle,
+    MatInput,
   ],
   templateUrl: './profile.html',
   styleUrl: './profile.css',
@@ -40,10 +44,18 @@ export class ProfileComponent implements OnInit {
   myServices       = signal<ServiceItem[]>([]);
   availableServices = signal<ServiceItem[]>([]);
   addableServices  = signal<ServiceItem[]>([]); // available minus already-added
-  serviceToAdd     = new FormControl<number | null>(null);
+  serviceToAdd     = new FormControl('', { nonNullable: true });
   priceToAdd       = new FormControl<number | null>(null);
   serviceLoading   = signal(false);
   serviceMessage   = signal('');
+
+  // Public listing (providers): bio shown on the directory card and storefront
+  bio               = new FormControl('');
+  savingDirectory   = signal(false);
+  directoryMessage  = signal('');
+
+  // Contact privacy (providers): both off unless the provider switches them on
+  contactMessage    = signal('');
 
   get user() {
     return this.authService.currentUser();
@@ -64,9 +76,41 @@ export class ProfileComponent implements OnInit {
     }
   }
 
+  saveDirectory(): void {
+    this.savingDirectory.set(true);
+    this.directoryMessage.set('');
+    this.authService.updateDirectoryProfile({ bio: (this.bio.value || '').trim() || null }).subscribe({
+      next: () => {
+        this.savingDirectory.set(false);
+        this.directoryMessage.set('Saved.');
+        setTimeout(() => this.directoryMessage.set(''), 3000);
+      },
+      error: (err) => {
+        this.savingDirectory.set(false);
+        this.directoryMessage.set(err?.error?.message || 'Could not save your directory settings.');
+      },
+    });
+  }
+
+  private syncDirectoryFields(): void {
+    this.bio.setValue(this.user?.bio ?? '');
+  }
+
+  setContactPref(which: 'showEmail' | 'showPhone', value: boolean): void {
+    this.contactMessage.set('');
+    this.authService.updateContactPrefs({ [which]: value }).subscribe({
+      next: () => {
+        this.contactMessage.set('Saved.');
+        setTimeout(() => this.contactMessage.set(''), 2500);
+      },
+      error: (err) => this.contactMessage.set(err?.error?.message || 'Could not save that setting.'),
+    });
+  }
+
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
-      this.authService.refreshProfile().subscribe();
+      this.syncDirectoryFields();
+      this.authService.refreshProfile().subscribe(() => this.syncDirectoryFields());
       if (this.authService.isProvider()) {
         this.loadMyServices();
         this.loadAvailableServices();
@@ -99,21 +143,19 @@ export class ProfileComponent implements OnInit {
     );
   }
 
+  /** Any service name can be added; a new name simply becomes a new tag. */
   addService(): void {
-    const serviceId = this.serviceToAdd.value;
-    if (!serviceId) return;
-
-    const svc = this.availableServices().find(s => s.service_id === serviceId);
-    if (!svc) return;
+    const name = this.serviceToAdd.value.trim().replace(/\s+/g, ' ');
+    if (!name) return;
 
     this.serviceLoading.set(true);
     this.serviceMessage.set('');
 
-    this.providerService.addService(svc.service_name, this.priceToAdd.value).subscribe({
+    this.providerService.addService(name, this.priceToAdd.value).subscribe({
       next: () => {
         this.serviceLoading.set(false);
-        this.serviceMessage.set(`"${svc.service_name}" added!`);
-        this.serviceToAdd.reset();
+        this.serviceMessage.set(`"${name}" added!`);
+        this.serviceToAdd.setValue('');
         this.priceToAdd.reset();
         this.loadMyServices();
         this.authService.refreshProfile().subscribe();

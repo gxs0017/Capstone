@@ -30,4 +30,30 @@ const messageLimiter = rateLimit({
     message: { message: 'You are sending messages too quickly. Please slow down.' },
 });
 
-module.exports = { globalLimiter, authLimiter, messageLimiter };
+// Community Board: comments flow like conversation, new posts shouldn't.
+const commentLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'You are commenting too quickly. Please slow down.' },
+});
+
+const postLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'You have posted a lot recently. Please try again in a few minutes.' },
+});
+
+// Address lookups come from people typing; the geocoder itself is throttled too.
+const geoLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many address searches. Please wait a moment.' },
+});
+
+module.exports = { globalLimiter, authLimiter, messageLimiter, commentLimiter, postLimiter, geoLimiter };

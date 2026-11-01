@@ -1,0 +1,25 @@
+<div class="tag-box">
+  @for (tag of tags(); track tag; let i = $index) {
+    <span class="tag">{{ tag }}<button type="button" (click)="remove(i)" [attr.aria-label]="'Remove ' + tag"><mat-icon>close</mat-icon></button></span>
+  }
+  <input
+    class="tag-input"
+    [placeholder]="tags().length ? 'Add another…' : placeholder()"
+    [ngModel]="draft()"
+    (ngModelChange)="draft.set($event); error.set('')"
+    (keydown)="onKey($event)"
+    (blur)="add(draft())"
+    name="serviceDraft"
+    autocomplete="off"
+    maxlength="40"
+  />
+</div>
+@if (error()) { <p class="tag-error">{{ error() }}</p> }
+@if (visibleSuggestions().length) {
+  <div class="suggest">
+    <span class="suggest-label">Popular:</span>
+    @for (s of visibleSuggestions(); track s) {
+      <button type="button" class="suggest-chip" (click)="add(s)">+ {{ s }}</button>
+    }
+  </div>
+}

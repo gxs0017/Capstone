@@ -170,19 +170,17 @@
                 }
 
                 <!-- Scheduled Date -->
-                @if (booking.scheduledDate) {
-                  <div class="detail-row">
-
-                    <mat-icon class="detail-icon">
-                      event
-                    </mat-icon>
-
-                    <div>
-                      <span class="detail-label">Scheduled</span>
-                      <span class="detail-value">{{ booking.scheduledDate | date:'medium' }}</span>
-                    </div>
+                <div class="detail-row">
+                  <mat-icon class="detail-icon">event</mat-icon>
+                  <div>
+                    <span class="detail-label">Scheduled</span>
+                    @if (booking.scheduledDate) {
+                      <span class="detail-value">{{ booking.scheduledDate | date:'EEEE, MMM d, y' }} · {{ booking.scheduledDate | date:'shortTime' }}</span>
+                    } @else {
+                      <span class="detail-value detail-value--muted">No time was set (older booking)</span>
+                    }
                   </div>
-                }
+                </div>
 
                 @if (booking.price !== null) {
                   <div class="detail-row">
@@ -194,9 +192,10 @@
                         @if (booking.discountPercent > 0) { ({{ booking.discountPercent }}% pack discount) }
                         &middot;
                         @switch (booking.paymentStatus) {
-                          @case ('PAID') { Paid upfront }
+                          @case ('PAID') { Paid online }
                           @case ('REFUNDED') { Refunded }
-                          @default { Pay on arrival }
+                          @case ('FAILED') { Payment failed }
+                          @default { Not paid yet }
                         }
                       </span>
                     </div>
@@ -233,7 +232,7 @@
                           <mat-icon class="status-icon">{{ getPaymentStatusIcon(booking.paymentStatus) }}</mat-icon>
                           {{ booking.paymentStatus }}
                         </span>
-                        @if (booking.amount != null) { &nbsp;— \${{ booking.amount.toFixed(2) }} }
+                        @if (booking.amount != null) { &nbsp;— {{ booking.amount | currency }} }
                       </span>
                     </div>
 
@@ -329,19 +328,26 @@
                   <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
                 } @else {
                   <ng-container *ngTemplateOutlet="cancelBtn; context: { $implicit: booking }"></ng-container>
-                  <button mat-raised-button color="accent" (click)="completeBooking(booking)">
-                    <mat-icon>task_alt</mat-icon> Mark as Completed
-                  </button>
+                  @if (booking.paymentStatus === 'PAID' && isRequestsView()) {
+                    <!-- Paid online: only the person who paid can confirm the job is done (that releases the money) -->
+                    <span class="cutoff-note">Paid online — waiting for the customer to confirm the job is done</span>
+                  } @else {
+                    <button mat-raised-button color="accent" (click)="completeBooking(booking)">
+                      <mat-icon>task_alt</mat-icon>
+                      {{ booking.paymentStatus === 'PAID' ? 'Confirm job done & release payment' : 'Mark as Completed' }}
+                    </button>
+                  }
                 }
 
               </mat-card-actions>
             }
 
-            @if (!isRequestsView() && authService.isRequester() && booking.paymentStatus === 'UNPAID'
-                 && booking.bookingType === 'ONE_TIME' && (booking.status === 'PENDING' || booking.status === 'CONFIRMED')) {
+            @if (!isRequestsView() && (booking.paymentStatus === 'UNPAID' || booking.paymentStatus === 'FAILED')
+                 && (booking.status === 'PENDING' || booking.status === 'CONFIRMED')) {
               <mat-card-actions align="end" class="card-actions">
-                <a mat-stroked-button color="primary" [routerLink]="['/payment', booking.bookingId]">
-                  <mat-icon>credit_card</mat-icon> Pay by card
+                <a mat-raised-button color="primary" [routerLink]="['/payment', booking.bookingId]">
+                  <mat-icon>lock</mat-icon>
+                  {{ booking.bookingType === 'RECURRING' ? 'Pay for the weekly pack' : 'Pay online now' }}
                 </a>
               </mat-card-actions>
             }

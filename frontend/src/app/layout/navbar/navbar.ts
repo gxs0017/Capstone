@@ -11,6 +11,7 @@ import { AuthService } from '../../services/auth.service';
 import { ChatService } from '../../services/chat.service';
 import { ChatSocketService } from '../../services/chat-socket.service';
 import { CommonModule } from '@angular/common';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-navbar',
@@ -36,7 +37,9 @@ export class Navbar implements OnInit, OnDestroy {
   authService = inject(AuthService);
   chatService = inject(ChatService);
   private chatSocket = inject(ChatSocketService);
+  private snackBar = inject(MatSnackBar);
   private messageSub?: Subscription;
+  private bookingSub?: Subscription;
 
   constructor() {
     // Chat isn't an admin feature (admins moderate, they don't chat), so the
@@ -55,10 +58,32 @@ export class Navbar implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.messageSub = this.chatSocket.onNewMessage().subscribe(() => this.chatService.refreshUnreadCount());
+
+    // A short pop-up when someone else changes one of your bookings (your own actions don't pop up)
+    this.bookingSub = this.chatSocket.on<{ reason: string; actorId: number | null }>('booking:changed').subscribe((e) => {
+      const me = this.authService.currentUser()?.id;
+      if (e.actorId != null && e.actorId === me) return;
+      const text = this.bookingToast(e.reason);
+      if (text) this.snackBar.open(text, 'Dismiss', { duration: 5000, horizontalPosition: 'end', verticalPosition: 'bottom' });
+    });
+  }
+
+  private bookingToast(reason: string): string | null {
+    switch (reason) {
+      case 'created':   return 'New booking request received.';
+      case 'confirmed': return 'Your booking was confirmed.';
+      case 'declined':  return 'A booking request was declined.';
+      case 'cancelled': return 'A booking was cancelled.';
+      case 'completed': return 'A job was marked completed.';
+      case 'paid':      return 'A payment was received for a booking.';
+      case 'expired':   return 'A booking request expired.';
+      default:          return null;
+    }
   }
 
   ngOnDestroy(): void {
     this.messageSub?.unsubscribe();
+    this.bookingSub?.unsubscribe();
   }
 
   logout(): void {

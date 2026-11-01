@@ -1,8 +1,10 @@
 // config/socket.js
-// Real-time layer for chat: JWT-authenticated handshake, one room per
-// conversation, server-side participant check before a socket may join a
-// room. A failed handshake is written to the audit log (same as any other
-// auth failure elsewhere in the app), including the IP it came from.
+// Real-time layer: JWT-authenticated handshake, then three kinds of room.
+//   conversation:<id>  chat messages (server-side participant check before joining)
+//   user:<id>          a person's private channel — booking and payment changes
+//   board / post:<id>  the community board (new posts, counts) and one open post's comments
+// A failed handshake is written to the audit log (same as any other auth
+// failure elsewhere in the app), including the IP it came from.
 
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -17,6 +19,9 @@ let io = null;
 const userSockets = new Map();
 
 const roomName = (conversationId) => `conversation:${conversationId}`;
+const userRoom = (userId) => `user:${userId}`;
+const postRoom = (postId) => `post:${postId}`;
+const BOARD_ROOM = 'board';
 
 // Mirrors the x-forwarded-for handling Express's `trust proxy` gives req.ip,
 // since Socket.IO's handshake doesn't go through Express's trust-proxy logic.
@@ -57,6 +62,14 @@ function initSocket(httpServer) {
 
         if (!userSockets.has(userId)) userSockets.set(userId, new Set());
         userSockets.get(userId).add(socket.id);
+
+        // Private channel + the public board feed; joined synchronously on connect
+        socket.join(userRoom(userId));
+        socket.join(BOARD_ROOM);
+
+        // Board posts are public, so any signed-in socket may watch one post's comments
+        socket.on('post:join', (postId) => { if (Number.isInteger(Number(postId))) socket.join(postRoom(postId)); });
+        socket.on('post:leave', (postId) => { socket.leave(postRoom(postId)); });
 
         // Listeners are registered synchronously, before any `await`, so a
         // 'conversation:join' the client fires right after connecting can
@@ -118,4 +131,22 @@ function joinUserToConversation(userId, conversationId) {
     }
 }
 
-module.exports = { initSocket, emitToConversation, joinUserToConversation };
+/** Private event for one person (all of their open tabs/devices). */
+function emitToUser(userId, event, payload) {
+    if (!io) return;
+    io.to(userRoom(userId)).emit(event, payload);
+}
+
+/** Event for everyone watching the board feed. */
+function emitToBoard(event, payload) {
+    if (!io) return;
+    io.to(BOARD_ROOM).emit(event, payload);
+}
+
+/** Event for everyone with one post open. */
+function emitToPost(postId, event, payload) {
+    if (!io) return;
+    io.to(postRoom(postId)).emit(event, payload);
+}
+
+module.exports = { initSocket, emitToConversation, joinUserToConversation, emitToUser, emitToBoard, emitToPost };

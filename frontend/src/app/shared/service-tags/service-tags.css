@@ -1,0 +1,11 @@
+.tag-box { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--mat-sys-outline); border-radius: var(--radius-sm); background: var(--mat-sys-surface); }
+.tag-box:focus-within { border-color: var(--mat-sys-primary); box-shadow: 0 0 0 1px var(--mat-sys-primary); }
+.tag { display: inline-flex; align-items: center; gap: 2px; padding: 4px 4px 4px 12px; border-radius: var(--radius-pill); background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); font-size: 0.85rem; font-weight: 500; }
+.tag button { display: inline-flex; border: 0; background: transparent; cursor: pointer; padding: 2px; border-radius: 50%; color: inherit; }
+.tag button mat-icon { font-size: 16px; width: 16px; height: 16px; }
+.tag-input { flex: 1; min-width: 140px; border: 0; outline: 0; background: transparent; font: inherit; color: inherit; padding: 4px 0; }
+.tag-error { margin: 6px 0 0; color: var(--mat-sys-error); font-size: 0.8rem; }
+.suggest { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.suggest-label { font-size: 0.8rem; color: var(--mat-sys-on-surface-variant); }
+.suggest-chip { border: 1px solid var(--mat-sys-outline-variant); background: transparent; color: var(--mat-sys-on-surface-variant); border-radius: var(--radius-pill); padding: 3px 10px; font-size: 0.8rem; cursor: pointer; }
+.suggest-chip:hover { background: var(--mat-sys-surface-container); color: var(--mat-sys-on-surface); }

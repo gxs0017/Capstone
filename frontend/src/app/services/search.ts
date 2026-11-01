@@ -8,11 +8,13 @@ export interface Provider {
   id: number;
   firstName: string;
   lastName: string;
-  email: string;
-  phoneNumber?: string;
+  /** Only present when the provider chose to show it (privacy by default). */
+  email?: string | null;
+  phoneNumber?: string | null;
   role: string;
   city: string;
   province: string;
+  neighbourhood?: string | null;
   services: string[];
   avgRating?: number | null;
   reviewCount?: number;
@@ -25,6 +27,31 @@ export interface ProviderPage {
   page:       number;
   limit:      number;
   totalPages: number;
+}
+
+export interface ServiceInfo {
+  serviceId: number;
+  serviceName: string;
+  basePrice: number;
+  /** How many providers currently offer it (0 = nobody, hidden from filters). */
+  providerCount: number;
+}
+
+export interface ProviderProfile {
+  id: number;
+  firstName: string;
+  lastName: string;
+  city: string;
+  province: string;
+  neighbourhood?: string | null;
+  /** Contact details appear only when the provider switched them on. */
+  email?: string | null;
+  phoneNumber?: string | null;
+  bio: string | null;
+  memberSince: string;
+  avgRating: number | null;
+  reviewCount: number;
+  services: { serviceId: number; serviceName: string; price: number }[];
 }
 
 // Sort types mirror the backend whitelist in models/User.js
@@ -64,6 +91,16 @@ export class SearchService {
   ];
 
   constructor(private http: HttpClient) {}
+
+  /** Every service type with its real id — the source of truth for filters and booking. */
+  getServices(): Observable<ServiceInfo[]> {
+    return this.http.get<ServiceInfo[]>(`${this.API}/services`).pipe(catchError(() => of([])));
+  }
+
+  /** Public storefront page — no login required. */
+  getProviderProfile(id: number): Observable<ProviderProfile> {
+    return this.http.get<ProviderProfile>(`${this.API}/providers/${id}/profile`);
+  }
 
   getProviders(
     service?: string,

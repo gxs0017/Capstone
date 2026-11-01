@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { MatCard, MatCardContent, MatCardActions } from '@angular/material/card';
@@ -10,6 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { BookingService, Booking } from '../services/booking.service';
 import { AuthService } from '../services/auth.service';
 import { ChatService } from '../services/chat.service';
+import { ChatSocketService } from '../services/chat-socket.service';
 
 @Component({
   selector: 'app-my-bookings',
@@ -32,6 +34,8 @@ export class MyBookingsComponent implements OnInit {
   private chatService = inject(ChatService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private chatSocket = inject(ChatSocketService);
+  private destroyRef = inject(DestroyRef);
   authService = inject(AuthService);
 
   bookings = signal<Booking[]>([]);
@@ -49,10 +53,13 @@ export class MyBookingsComponent implements OnInit {
     const isRequests = this.route.snapshot.data['requestsView'] === true;
     this.isRequestsView.set(isRequests);
     this.loadBookings();
+
+    // Live: the list refreshes the moment a booking changes (no page reload)
+    this.chatSocket.on('booking:changed').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadBookings(true));
   }
 
-  loadBookings(): void {
-    this.loading.set(true);
+  loadBookings(silent = false): void {
+    if (!silent) this.loading.set(true);
     const view = this.isRequestsView() ? 'requests' as const : undefined;
     this.bookingService.getMyBookings(view).subscribe({
       next: (bookings) => {

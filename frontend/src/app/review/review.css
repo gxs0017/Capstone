@@ -24,16 +24,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--color-error-bg);
+  color: var(--color-error-on-bg);
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   margin-bottom: 20px;
 }
 
 .review-card {
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   margin-bottom: 20px;
 }
 
@@ -104,7 +104,7 @@
 }
 
 .star-rating mat-icon.filled {
-  color: #f59e0b;
+  color: var(--color-star);
 }
 
 .full-width {
@@ -124,14 +124,14 @@
 /* Confirmation */
 .confirmation-card {
   text-align: center;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 
 .confirm-icon {
   font-size: 72px;
   width: 72px;
   height: 72px;
-  color: #059669;
+  color: var(--color-success);
   margin-bottom: 12px;
 }
 

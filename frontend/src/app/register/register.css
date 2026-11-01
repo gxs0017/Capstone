@@ -2,12 +2,14 @@
   display: flex;
   justify-content: center;
   padding: 48px 24px;
+  background: radial-gradient(circle at 70% 10%, var(--mat-sys-primary-container) 0%, transparent 55%);
 }
 
 .auth-card {
   width: 100%;
   max-width: 560px;
-  padding: 8px;
+  padding: 16px 8px;
+  box-shadow: var(--shadow-md) !important;
 }
 
 .auth-subtitle {
@@ -38,7 +40,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 16px;
   font-size: 0.9rem;
@@ -50,8 +52,8 @@
 }
 
 .success-banner {
-  background: #e6f4ea;
-  color: #1e7e34;
+  background: var(--color-success-bg);
+  color: var(--color-success-on-bg);
 }
 
 .auth-footer {
@@ -66,3 +68,5 @@
   text-decoration: none;
   font-weight: 500;
 }
+
+.field-error { color: var(--mat-sys-error); font-size: 0.8rem; margin: 4px 0 8px; }

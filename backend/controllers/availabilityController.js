@@ -3,7 +3,10 @@
 // booking calendar), plus provider-owned CRUD so a provider can set their
 // own days/time slots (mirrors providerController's my-services pattern).
 
+const pool = require('../config/db');
 const Availability = require('../models/Availability');
+const rules = require('../utils/bookingRules');
+const slotRules = require('../utils/slots');
 const { toAvailabilityDTOList, toAvailabilityDTO } = require('../mappers/userMapper');
 
 const DAY_OF_WEEK_MIN = 0;
@@ -27,6 +30,65 @@ const getProviderAvailability = async (req, res) => {
     } catch (err) {
         console.error('getProviderAvailability error:', err);
         return res.status(500).json({ message: 'Error fetching provider availability.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// GET /api/auth/providers/:providerId/slots?date=YYYY-MM-DD
+// Every start time on that date with whether it can be booked (and why not):
+// inside the provider's weekly hours, far enough ahead, and not overlapping
+// another booking. A provider with no published weekly hours is treated as
+// open 8 AM – 8 PM, and `publishedHours: false` tells the UI the provider will
+// confirm the requested time. Uses the same rules createBooking enforces.
+// ----------------------------------------------------------------
+const getProviderSlots = async (req, res) => {
+    try {
+        const providerId = Number(req.params.providerId);
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(req.query.date || ''));
+        if (!Number.isInteger(providerId) || !match) {
+            return res.status(400).json({ message: 'A provider id and a date (YYYY-MM-DD) are required.' });
+        }
+
+        const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
+        const date = new Date(y, m - 1, d);
+        if (slotRules.dateKey(date) !== match[0]) {
+            return res.status(400).json({ message: 'That is not a real calendar date.' });
+        }
+
+        const [provider] = await pool.execute(
+            "SELECT user_id FROM users WHERE user_id = ? AND role = 'PROVIDER' AND deleted_at IS NULL",
+            [providerId]
+        );
+        if (provider.length === 0) return res.status(404).json({ message: 'Provider not found.' });
+
+        const availabilityRows = await Availability.getAvailabilityByProviderId(providerId);
+
+        // Bookings that could overlap anything on this day (a session straddles the edges)
+        const spanMs = rules.SESSION_MINUTES * 60000;
+        const dayStart = new Date(y, m - 1, d, 0, 0, 0).getTime();
+        const dayEnd = new Date(y, m - 1, d + 1, 0, 0, 0).getTime();
+        const [booked] = await pool.execute(
+            `SELECT b.scheduled_date FROM bookings b
+             JOIN provider_details p ON p.provider_detail_id = b.provider_detail_id
+             WHERE p.user_id = ? AND b.status IN ('PENDING','CONFIRMED')
+               AND b.scheduled_date > ? AND b.scheduled_date < ?`,
+            [providerId, rules.formatLocalDateTime(new Date(dayStart - spanMs)), rules.formatLocalDateTime(new Date(dayEnd + spanMs))]
+        );
+
+        const horizon = Date.now() + rules.BOOKING_HORIZON_DAYS * 86400000;
+        const beyondHorizon = dayStart > horizon;
+        const slots = beyondHorizon ? [] : slotRules.slotsForDate(availabilityRows, date, booked.map((r) => r.scheduled_date));
+
+        return res.json({
+            date: match[0],
+            sessionMinutes: rules.SESSION_MINUTES,
+            publishedHours: availabilityRows.length > 0,
+            beyondHorizon,
+            slots,
+        });
+    } catch (err) {
+        console.error('getProviderSlots error:', err);
+        return res.status(500).json({ message: 'Error loading available times.' });
     }
 };
 
@@ -89,4 +151,4 @@ const removeAvailability = async (req, res) => {
     }
 };
 
-module.exports = { getProviderAvailability, getMyAvailability, addAvailability, removeAvailability };
+module.exports = { getProviderAvailability, getProviderSlots, getMyAvailability, addAvailability, removeAvailability };

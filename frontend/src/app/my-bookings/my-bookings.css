@@ -27,7 +27,7 @@
   background: var(--mat-sys-primary-container, #dbeafe);
   color: var(--mat-sys-on-primary-container, #1d4ed8);
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   margin-bottom: 20px;
 }
@@ -102,7 +102,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 12px;
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -115,33 +115,38 @@
 }
 
 .status-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-on-bg);
 }
 
 .status-confirmed {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-on-bg);
 }
 
 .status-cancelled {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--color-error-bg);
+  color: var(--color-error-on-bg);
 }
 
 .status-declined {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--color-neutral-bg);
+  color: var(--color-neutral-on-bg);
 }
 
 .status-completed {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--color-complete-bg);
+  color: var(--color-complete-on-bg);
 }
 
 .status-expired {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-neutral-bg);
+  color: var(--color-neutral-on-bg);
+}
+
+.detail-value--muted {
+  color: var(--mat-sys-on-surface-variant);
+  font-style: italic;
 }
 
 .card-divider {
@@ -256,8 +261,8 @@
 }
 
 .chip-recurring {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--color-complete-bg);
+  color: var(--color-complete-on-bg);
 }
 
 .chip-icon {

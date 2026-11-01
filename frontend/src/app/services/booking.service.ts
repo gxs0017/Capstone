@@ -52,7 +52,7 @@ export interface Booking {
 export interface CreateBookingPayload {
   providerId: number;
   serviceId: number;
-  scheduledDate?: string;
+  scheduledDate: string;
   notes?: string;
   bookingType?: BookingType;
   sessions?: number;
@@ -71,6 +71,8 @@ export interface BookingQuote {
   minLeadMinutes: number;
   cancelCutoffHours: number;
   pendingExpiryHours: number;
+  sessionMinutes: number;
+  horizonDays: number;
 }
 
 export interface CreateBookingResponse {
@@ -81,7 +83,7 @@ export interface CreateBookingResponse {
   status: BookingStatus;
   paymentStatus: PaymentStatus;
   scheduledDates: string[];
-  quote: Omit<BookingQuote, 'sessionOptions' | 'minLeadMinutes' | 'cancelCutoffHours' | 'pendingExpiryHours'>;
+  quote: Omit<BookingQuote, 'sessionOptions' | 'minLeadMinutes' | 'cancelCutoffHours' | 'pendingExpiryHours' | 'sessionMinutes' | 'horizonDays'>;
 }
 
 @Injectable({ providedIn: 'root' })

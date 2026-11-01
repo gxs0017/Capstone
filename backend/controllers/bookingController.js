@@ -6,9 +6,13 @@
 const crypto = require('crypto');
 const pool = require('../config/db');
 const rules = require('../utils/bookingRules');
+const slotRules = require('../utils/slots');
+const Availability = require('../models/Availability');
+const ledger = require('../utils/paymentLedger');
 const { expireStalePending } = require('../utils/bookingExpiry');
 const { toBookingDTOList } = require('../mappers/userMapper');
 const { logAction } = require('../models/AuditLog');
+const { notifyBookings } = require('../utils/realtime');
 
 // ----------------------------------------------------------------
 // GET /api/bookings/quote?serviceId=1&providerId=2&type=ONE_TIME|RECURRING&sessions=4
@@ -47,6 +51,8 @@ const getQuote = async (req, res) => {
             minLeadMinutes: rules.MIN_LEAD_MINUTES,
             cancelCutoffHours: rules.CANCEL_CUTOFF_HOURS,
             pendingExpiryHours: rules.PENDING_EXPIRY_HOURS,
+            sessionMinutes: rules.SESSION_MINUTES,
+            horizonDays: rules.BOOKING_HORIZON_DAYS,
         });
     } catch (err) {
         console.error('getQuote error:', err);
@@ -54,26 +60,23 @@ const getQuote = async (req, res) => {
     }
 };
 
-// Does `date` fall inside one of the provider's weekly availability windows?
-const isWithinAvailability = (slots, date) => {
-    const time = date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds();
-    return slots.some((s) => {
-        if (s.day_of_week !== date.getDay()) return false;
-        const [sh, sm, ss] = String(s.start_time).split(':').map(Number);
-        const [eh, em, es] = String(s.end_time).split(':').map(Number);
-        return time >= sh * 3600 + sm * 60 + (ss || 0) && time <= eh * 3600 + em * 60 + (es || 0);
-    });
+const SLOT_ERRORS = {
+    CLOSED:   (when) => ({ status: 400, message: `The provider is not available at ${when}. Pick a time from their open slots.` }),
+    TOO_SOON: ()     => ({ status: 400, message: `Bookings must be made at least ${rules.MIN_LEAD_MINUTES / 60} hour before the start time.` }),
+    TOO_FAR:  ()     => ({ status: 400, message: `Bookings can only be made up to ${rules.BOOKING_HORIZON_DAYS} days ahead.` }),
+    BOOKED:   (when) => ({ status: 409, message: `The provider already has a booking that overlaps ${when}. Pick another time.` }),
 };
 
 // ----------------------------------------------------------------
 // POST /api/bookings — create a booking (REQUESTER / PROVIDER)
-// Body: { providerId, serviceId, scheduledDate?, notes?,
+// Body: { providerId, serviceId, scheduledDate, notes?,
 //         bookingType?: 'ONE_TIME' | 'RECURRING', sessions?: 4 | 8 }
-// ONE_TIME  -> one PENDING booking, pay on arrival.
-// RECURRING -> `sessions` weekly bookings sharing a batch_id, paid upfront
-//              at a discount (all-or-nothing).
-// Rules: start must be >= 1 hour away, inside the provider's availability,
-// and not collide with another active booking for that provider.
+// scheduledDate ("YYYY-MM-DD HH:mm:ss") is REQUIRED — a booking always has a time.
+// ONE_TIME  -> one PENDING booking; pay on arrival or online (held until completion).
+// RECURRING -> `sessions` weekly bookings sharing a batch_id at a discount
+//              (all-or-nothing); the whole pack is paid online in one payment.
+// Rules (see utils/slots.js): the session must fit the provider's weekly hours,
+// start >= 1 hour from now, and not overlap another active booking.
 // ----------------------------------------------------------------
 const createBooking = async (req, res) => {
     const conn = await pool.getConnection();
@@ -86,20 +89,18 @@ const createBooking = async (req, res) => {
             return res.status(400).json({ message: 'providerId and serviceId are required.' });
         }
 
-        // scheduledDate, when provided, must be a MySQL-friendly "YYYY-MM-DD HH:mm:ss"
-        // datetime string (what the frontend's date+time picker sends) so it is
-        // stored correctly in the DATETIME column.
+        // A booking always has a time. scheduledDate must be a MySQL-friendly
+        // "YYYY-MM-DD HH:mm:ss" datetime string (what the booking page's date +
+        // time-slot picker sends) so it is stored correctly in the DATETIME column.
         const DATETIME_FORMAT = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
-        if (scheduledDate && !DATETIME_FORMAT.test(scheduledDate)) {
+        if (!scheduledDate) {
+            return res.status(400).json({ message: 'Pick a date and time for the booking.' });
+        }
+        if (!DATETIME_FORMAT.test(scheduledDate)) {
             return res.status(400).json({ message: 'scheduledDate must be in "YYYY-MM-DD HH:mm:ss" format.' });
         }
-        if (bookingType === 'RECURRING') {
-            if (!scheduledDate) {
-                return res.status(400).json({ message: 'A start date and time are required for a recurring booking.' });
-            }
-            if (!rules.RECURRING_SESSION_OPTIONS.includes(sessions)) {
-                return res.status(400).json({ message: `sessions must be one of: ${rules.RECURRING_SESSION_OPTIONS.join(', ')}.` });
-            }
+        if (bookingType === 'RECURRING' && !rules.RECURRING_SESSION_OPTIONS.includes(sessions)) {
+            return res.status(400).json({ message: `sessions must be one of: ${rules.RECURRING_SESSION_OPTIONS.join(', ')}.` });
         }
 
         // Find the provider_detail_id that links this provider to this service
@@ -123,55 +124,42 @@ const createBooking = async (req, res) => {
         }
 
         // Every session start the booking will occupy
-        let starts = [null];
-        if (scheduledDate) {
-            const first = rules.parseLocalDateTime(scheduledDate);
-            if (isNaN(first.getTime())) {
-                return res.status(400).json({ message: 'scheduledDate is not a valid date.' });
-            }
-            // Rule: no bookings less than an hour before the start time
-            if (!rules.meetsLeadTime(first)) {
-                return res.status(400).json({
-                    message: `Bookings must be made at least ${rules.MIN_LEAD_MINUTES / 60} hour before the start time.`,
-                });
-            }
-            starts = bookingType === 'RECURRING' ? rules.weeklyDates(first, sessions) : [first];
-
-            // Rule: every session must fall in the provider's availability (if they publish any)
-            const [slots] = await pool.execute(
-                'SELECT day_of_week, start_time, end_time FROM provider_availability WHERE user_id = ?',
-                [providerId]
-            );
-            if (slots.length > 0) {
-                const bad = starts.find((d) => !isWithinAvailability(slots, d));
-                if (bad) {
-                    return res.status(400).json({
-                        message: `The provider is not available on ${rules.formatLocalDateTime(bad)}.`,
-                    });
-                }
-            }
-
-            // Rule: no double-booking the provider
-            for (const d of starts) {
-                const [clash] = await pool.execute(
-                    `SELECT b.booking_id FROM bookings b
-                     JOIN provider_details p ON p.provider_detail_id = b.provider_detail_id
-                     WHERE p.user_id = ? AND b.scheduled_date = ? AND b.status IN ('PENDING','CONFIRMED')`,
-                    [providerId, rules.formatLocalDateTime(d)]
-                );
-                if (clash.length > 0) {
-                    return res.status(409).json({
-                        message: `The provider already has a booking at ${rules.formatLocalDateTime(d)}.`,
-                    });
-                }
-            }
+        const first = rules.parseLocalDateTime(scheduledDate);
+        if (isNaN(first.getTime())) {
+            return res.status(400).json({ message: 'scheduledDate is not a valid date.' });
         }
+        const starts = bookingType === 'RECURRING' ? rules.weeklyDates(first, sessions) : [first];
 
         const quote = rules.calculateQuote(pd[0].base_price, bookingType, starts.length);
         const batchId = bookingType === 'RECURRING' ? crypto.randomUUID() : null;
-        const paymentStatus = bookingType === 'RECURRING' ? 'PAID' : 'UNPAID'; // prepaid pack (mock payment)
+        // Nothing is "paid" until a real payment goes through (utils/paymentLedger.js).
+        const paymentStatus = 'UNPAID';
 
         await conn.beginTransaction();
+
+        // Serialize bookings per provider: lock their rows so two requesters
+        // picking the same slot at the same moment can't both pass the check below.
+        await conn.execute('SELECT provider_detail_id FROM provider_details WHERE user_id = ? FOR UPDATE', [providerId]);
+
+        const availabilityRows = await Availability.getAvailabilityByProviderId(providerId);
+        const spanMs = rules.SESSION_MINUTES * 60000;
+        for (const d of starts) {
+            const [clashRows] = await conn.execute(
+                `SELECT b.scheduled_date FROM bookings b
+                 JOIN provider_details p ON p.provider_detail_id = b.provider_detail_id
+                 WHERE p.user_id = ? AND b.status IN ('PENDING','CONFIRMED')
+                   AND b.scheduled_date > ? AND b.scheduled_date < ?`,
+                [providerId, rules.formatLocalDateTime(new Date(d.getTime() - spanMs)),
+                             rules.formatLocalDateTime(new Date(d.getTime() + spanMs))]
+            );
+            const check = slotRules.checkStart(availabilityRows, d, clashRows.map((r) => r.scheduled_date));
+            if (!check.ok) {
+                await conn.rollback();
+                const err = SLOT_ERRORS[check.code](rules.formatLocalDateTime(d));
+                return res.status(err.status).json({ message: err.message });
+            }
+        }
+
         const bookingIds = [];
         for (let i = 0; i < starts.length; i++) {
             const [result] = await conn.execute(
@@ -182,7 +170,7 @@ const createBooking = async (req, res) => {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     pd[0].provider_detail_id, req.user.id, serviceId,
-                    starts[i] ? rules.formatLocalDateTime(starts[i]) : null,
+                    rules.formatLocalDateTime(starts[i]),
                     notes || null,
                     bookingType, batchId, i + 1, starts.length,
                     quote.perSessionPrice, quote.discountPercent, paymentStatus,
@@ -193,6 +181,7 @@ const createBooking = async (req, res) => {
         await conn.commit();
 
         logAction(req.user.id, 'BOOKING_CREATED', 'booking: ' + bookingIds.join(','), req.ip);
+        notifyBookings(bookingIds, 'created', req.user.id);
 
         return res.status(201).json({
             message: 'Booking created successfully.',
@@ -201,7 +190,7 @@ const createBooking = async (req, res) => {
             batchId,
             status: 'PENDING',
             paymentStatus,
-            scheduledDates: starts.filter(Boolean).map(rules.formatLocalDateTime),
+            scheduledDates: starts.map(rules.formatLocalDateTime),
             quote,
         });
     } catch (err) {
@@ -353,6 +342,14 @@ const updateBookingStatus = async (req, res) => {
         if (status === 'COMPLETED' && booking.status !== 'CONFIRMED') {
             return res.status(400).json({ message: 'Only a confirmed booking can be marked completed.' });
         }
+        // The money for a paid booking is held until the job is done. Only the
+        // person who paid (or an admin) can say it's done — otherwise a provider
+        // could release their own payment.
+        if (status === 'COMPLETED' && booking.payment_status === 'PAID' && !isRequester && !isAdmin) {
+            return res.status(403).json({
+                message: 'This booking was paid online. Only the person who paid can confirm it is complete — ask them to mark it done.',
+            });
+        }
 
         // Cancellation cutoff (requester only; providers and admins are exempt)
         if (status === 'CANCELLED' && isRequester && !isProvider && !isAdmin
@@ -379,6 +376,13 @@ const updateBookingStatus = async (req, res) => {
         );
 
         logAction(req.user.id, 'BOOKING_' + status, 'booking: ' + req.params.id, req.ip);
+        notifyBookings(req.params.id, status.toLowerCase(), req.user.id);
+
+        // Release the provider's earnings (completed) or return the money
+        // through the original gateway (cancelled / declined). Fire-and-forget:
+        // a gateway hiccup must never block the status change, and failed refunds retry.
+        if (refund || status === 'COMPLETED') ledger.settle();
+
         return res.json({
             message: `Booking ${status.toLowerCase()} successfully.`,
             refunded: refund,

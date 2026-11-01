@@ -1,9 +1,13 @@
 // services/paypal.js
-// Thin PayPal REST client (Orders API v2). No SDK — uses built-in fetch.
+// Thin PayPal REST client (Orders + Payments API v2). No SDK — uses built-in fetch.
+// Every amount in the app is Canadian dollars (Stripe is already CAD).
 const PAYPAL_MODE = process.env.PAYPAL_MODE || 'sandbox';
+const CURRENCY = 'CAD';
 const BASE = PAYPAL_MODE === 'live'
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
+
+const isConfigured = () => !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
 
 // Exchange client id + secret for a short-lived access token.
 async function getAccessToken() {
@@ -24,7 +28,7 @@ async function getAccessToken() {
 }
 
 // Create an order for a given amount (immediate capture intent).
-async function createOrder(amount, currency = 'USD') {
+async function createOrder(amount, currency = CURRENCY) {
   const token = await getAccessToken();
   const res = await fetch(`${BASE}/v2/checkout/orders`, {
     method: 'POST',
@@ -51,4 +55,33 @@ async function captureOrder(orderId) {
   return data;
 }
 
-module.exports = { getAccessToken, createOrder, captureOrder, PAYPAL_MODE };
+// Fetch an order's current state (used to recover when a capture already went through).
+async function getOrder(orderId) {
+  const token = await getAccessToken();
+  const res = await fetch(`${BASE}/v2/checkout/orders/${orderId}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`PayPal getOrder failed: ${JSON.stringify(data)}`);
+  return data;
+}
+
+// Refund all or part of a captured payment. `requestId` makes retries safe —
+// PayPal returns the original refund instead of paying out twice.
+async function refundCapture(captureId, amount, currency = CURRENCY, requestId) {
+  const token = await getAccessToken();
+  const res = await fetch(`${BASE}/v2/payments/captures/${captureId}/refund`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(requestId ? { 'PayPal-Request-Id': requestId } : {}),
+    },
+    body: JSON.stringify({ amount: { value: Number(amount).toFixed(2), currency_code: currency } }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`PayPal refund failed: ${JSON.stringify(data)}`);
+  return data;
+}
+
+module.exports = { getAccessToken, createOrder, captureOrder, getOrder, refundCapture, isConfigured, PAYPAL_MODE, CURRENCY };

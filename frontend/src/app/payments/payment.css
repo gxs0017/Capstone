@@ -6,52 +6,134 @@
 
 .payment-card {
   width: min(100%, 560px);
+  border-radius: var(--radius-lg) !important;
 }
 
 .back-link {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
-
-.amount {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 20px;
-}
-
-.pay-button {
-  width: 100%;
-  margin-top: 24px;
+h1 {
+  margin: 4px 0 20px;
+  font-size: 1.6rem;
+  font-weight: 700;
 }
 
 .state-center {
   display: grid;
   justify-items: center;
   gap: 12px;
-  padding: 32px 0;
+  padding: 24px 0;
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .error-message,
 .success-message {
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin: 16px 0;
   padding: 14px;
 }
 
 .error-message {
-  background: #ffebee;
-  color: #b3261e;
+  background: var(--color-error-bg);
+  color: var(--color-error-on-bg);
 }
 
 .success-message {
   align-items: flex-start;
-  background: #e8f5e9;
-  color: #146c2e;
+  background: var(--color-success-bg);
+  color: var(--color-success-on-bg);
   display: flex;
   gap: 10px;
 }
 
 .success-message p {
   margin: 4px 0 0;
+  font-size: 0.9rem;
 }
 
+.success-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Order summary */
+.order-summary {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.92rem;
+}
+
+.order-row--top {
+  align-items: flex-start;
+}
+
+.order-label {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.order-value {
+  font-weight: 500;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.order-date {
+  white-space: nowrap;
+}
+
+.order-total {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding-top: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.escrow-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.82rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 20px;
+}
+
+.escrow-note mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+.method-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tab-active {
+  background: var(--mat-sys-primary) !important;
+  color: var(--mat-sys-on-primary) !important;
+  border-color: var(--mat-sys-primary) !important;
+}
+
+.pay-button {
+  width: 100%;
+  margin-top: 24px;
+}

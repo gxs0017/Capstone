@@ -7,8 +7,12 @@ CREATE DATABASE IF NOT EXISTS bookingapp_db;
 USE bookingapp_db;
 
 -- Drop in reverse FK order so constraints don't block drops
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS post_likes;
+DROP TABLE IF EXISTS post_comments;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS conversations;
+DROP TABLE IF EXISTS posts;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS bookings;
@@ -16,6 +20,7 @@ DROP TABLE IF EXISTS provider_availability;
 DROP TABLE IF EXISTS provider_details;
 DROP TABLE IF EXISTS services;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS neighbourhoods;
 
 -- ----------------------------------------------------------------
 -- USERS TABLE
@@ -25,6 +30,22 @@ DROP TABLE IF EXISTS users;
 -- row, its bookings and reviews stay for history. Deleted users cannot log in
 -- and are hidden from search and admin lists.
 -- ----------------------------------------------------------------
+-- Named areas inside a city, imported from OpenStreetMap (source 'OSM') plus
+-- one fallback row per postal area (source 'POSTAL', e.g. "Brampton (L6X)").
+-- Users are matched to the nearest named area automatically; see utils/neighbourhoods.js.
+CREATE TABLE neighbourhoods (
+    neighbourhood_id INT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(120) NOT NULL,
+    source     ENUM('OSM','POSTAL') NOT NULL,
+    ext_key    VARCHAR(40)  NOT NULL,
+    province   CHAR(2)      DEFAULT NULL,
+    lat        DECIMAL(9,6) DEFAULT NULL,
+    lng        DECIMAL(9,6) DEFAULT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_neighbourhood_source (source, ext_key),
+    INDEX idx_neighbourhood_geo (source, lat, lng)
+);
+
 CREATE TABLE users (
     user_id       INT AUTO_INCREMENT PRIMARY KEY,
     first_name    VARCHAR(50)  NOT NULL,
@@ -40,6 +61,13 @@ CREATE TABLE users (
     role          ENUM('REQUESTER','PROVIDER','ADMIN') NOT NULL,
     is_blocked    BOOLEAN      NOT NULL DEFAULT FALSE,
     deleted_at    DATETIME     DEFAULT NULL,
+    bio           VARCHAR(300) DEFAULT NULL,           -- provider's "about me" (directory + storefront)
+    directory_visible BOOLEAN  NOT NULL DEFAULT FALSE, -- legacy; the directory now lists providers only
+    lat           DECIMAL(9,6) DEFAULT NULL,           -- from the address lookup / geocoder
+    lng           DECIMAL(9,6) DEFAULT NULL,
+    neighbourhood_id INT       DEFAULT NULL,           -- worked out automatically from lat/lng (see neighbourhoods)
+    show_email    BOOLEAN      NOT NULL DEFAULT FALSE, -- provider privacy: show email on public profile
+    show_phone    BOOLEAN      NOT NULL DEFAULT FALSE, -- provider privacy: show phone on public profile
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -236,4 +264,88 @@ CREATE TABLE messages (
     FOREIGN KEY (reviewed_by)     REFERENCES users(user_id)                 ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_messages_conversation (conversation_id, created_at),
     INDEX idx_messages_status (status)
+);
+
+-- ----------------------------------------------------------------
+-- POSTS TABLE
+-- The Community Board: a classifieds-style board that sits alongside the
+-- normal search/book flow. Any logged-in user (REQUESTER or PROVIDER) can
+-- post. type = 'WANTED' is "I need help with X"; type = 'OFFERING' is a
+-- provider advertising a service with a price (separate from, and not
+-- required to match, their structured provider_details listings — this is
+-- just a classified ad). No category/service link by design: fully
+-- free-text title + description, matching the search-by-keyword board UX
+-- rather than the structured Browse Services filters.
+-- ----------------------------------------------------------------
+CREATE TABLE posts (
+    post_id     INT AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT NOT NULL,
+    type        ENUM('GENERAL','WANTED','OFFERING','RECOMMENDATION','FOR_SALE','LOST_FOUND','SAFETY','EVENT') NOT NULL DEFAULT 'GENERAL',
+    title       VARCHAR(150) NOT NULL,
+    description TEXT NOT NULL,
+    price       DECIMAL(8,2) DEFAULT NULL,
+    city        VARCHAR(50) DEFAULT NULL,
+    status      ENUM('OPEN','CLOSED') NOT NULL DEFAULT 'OPEN',
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_posts_type_status (type, status),
+    INDEX idx_posts_created (created_at),
+    neighbourhood_id INT DEFAULT NULL,
+    INDEX idx_posts_city (city),
+    INDEX idx_posts_neighbourhood (neighbourhood_id)
+);
+
+-- Public comments (one level of replies) and "Thanks" likes on board posts.
+CREATE TABLE post_comments (
+    comment_id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id    INT NOT NULL,
+    user_id    INT NOT NULL,
+    parent_id  INT DEFAULT NULL,
+    content    VARCHAR(1000) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id)   REFERENCES posts(post_id)            ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id)   REFERENCES users(user_id)            ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES post_comments(comment_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_comments_post (post_id, created_at)
+);
+
+CREATE TABLE post_likes (
+    post_id    INT NOT NULL,
+    user_id    INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (post_id, user_id),
+    FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- ----------------------------------------------------------------
+-- PAYMENTS TABLE (ledger)
+-- One row per paid booking session. Amount is always computed server-side
+-- from the stored booking price. HELD = captured, waiting for the job to be
+-- confirmed done; RELEASED = provider earned it; REFUNDED / REFUND_FAILED =
+-- cancelled/expired/declined bookings (failed refunds are retried).
+-- ----------------------------------------------------------------
+CREATE TABLE payments (
+    payment_id      INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id      INT NOT NULL,
+    payer_id        INT NOT NULL,
+    provider_id     INT NOT NULL,
+    method          VARCHAR(20)  NOT NULL,
+    external_ref    VARCHAR(255) DEFAULT NULL,
+    currency        CHAR(3)      NOT NULL DEFAULT 'CAD',
+    amount          DECIMAL(8,2) NOT NULL,
+    platform_fee    DECIMAL(8,2) NOT NULL DEFAULT 0,
+    provider_amount DECIMAL(8,2) NOT NULL,
+    status          ENUM('HELD','RELEASED','REFUNDED','REFUND_FAILED') NOT NULL DEFAULT 'HELD',
+    refund_error    VARCHAR(255) DEFAULT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    released_at     DATETIME DEFAULT NULL,
+    refunded_at     DATETIME DEFAULT NULL,
+    UNIQUE KEY uniq_payment_booking (booking_id),
+    FOREIGN KEY (booking_id)  REFERENCES bookings(booking_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (payer_id)    REFERENCES users(user_id)       ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (provider_id) REFERENCES users(user_id)       ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_payments_provider (provider_id, status),
+    INDEX idx_payments_payer (payer_id)
 );

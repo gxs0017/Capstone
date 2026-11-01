@@ -17,6 +17,7 @@ import { AdminService, AdminUser, AdminUserPage, DashboardStats } from '../servi
 import { AdminBookingsComponent } from './admin-bookings';
 import { AdminLogsComponent } from './admin-logs';
 import { AdminModerationComponent } from './admin-moderation';
+import { AdminPaymentsComponent } from './admin-payments';
 
 @Component({
   selector: 'app-admin',
@@ -36,6 +37,7 @@ import { AdminModerationComponent } from './admin-moderation';
     AdminBookingsComponent,
     AdminLogsComponent,
     AdminModerationComponent,
+    AdminPaymentsComponent,
   ],
   templateUrl: './admin.html',
   styleUrl: './admin.css',
@@ -58,7 +60,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   actionLoading = signal<number | null>(null); // userId being acted on
   actionMessage = signal('');
 
-  tab = signal<'users' | 'bookings' | 'logs' | 'moderation'>('users');
+  tab = signal<'users' | 'bookings' | 'logs' | 'moderation' | 'payments'>('users');
 
   // Inline profile editor (one user at a time)
   editingId = signal<number | null>(null);

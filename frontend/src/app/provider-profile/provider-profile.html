@@ -1,0 +1,100 @@
+<div class="profile-page">
+  @if (loading()) {
+    <div class="state-center">
+      <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    </div>
+  } @else if (notFound()) {
+    <div class="state-center">
+      <mat-icon class="empty-icon">person_off</mat-icon>
+      <h2>Provider not found</h2>
+      <a mat-button routerLink="/search">Browse Services</a>
+    </div>
+  } @else if (profile(); as p) {
+    <div class="profile-hero">
+      <div class="hero-avatar">{{ getInitials() }}</div>
+      <div class="hero-info">
+        <h1>{{ p.firstName }} {{ p.lastName }}</h1>
+        <p class="hero-location"><mat-icon class="inline-icon">place</mat-icon>{{ p.neighbourhood ? p.neighbourhood + ' · ' : '' }}{{ p.city }}, {{ p.province }}</p>
+
+        @if (p.avgRating !== null) {
+          <div class="hero-rating">
+            @for (i of [1,2,3,4,5]; track i) {
+              <mat-icon class="star-icon">{{ starIcon(p.avgRating!, i) }}</mat-icon>
+            }
+            <span class="rating-value">{{ p.avgRating }}</span>
+            <span class="rating-count">({{ p.reviewCount }} review{{ p.reviewCount === 1 ? '' : 's' }})</span>
+          </div>
+        } @else {
+          <p class="no-rating">No reviews yet</p>
+        }
+
+        @if (p.bio) { <p class="hero-bio">{{ p.bio }}</p> }
+        <p class="member-since">Member since {{ p.memberSince | date:'MMMM yyyy' }}</p>
+        @if (p.email || p.phoneNumber) {
+          <p class="hero-contact">
+            @if (p.email) { <span><mat-icon class="inline-icon">email</mat-icon>{{ p.email }}</span> }
+            @if (p.phoneNumber) { <span><mat-icon class="inline-icon">phone</mat-icon>{{ p.phoneNumber }}</span> }
+          </p>
+        }
+      </div>
+
+      @if (!isMine()) {
+        <button mat-raised-button color="primary" [disabled]="messageLoading()" (click)="message()">
+          <mat-icon>chat</mat-icon> Message
+        </button>
+      } @else {
+        <a mat-stroked-button routerLink="/profile"><mat-icon>edit</mat-icon> Edit my storefront</a>
+      }
+    </div>
+
+    @if (isMine()) {
+      <p class="own-banner">This is how customers see your storefront. Change your services, prices, bio and contact settings in your profile.</p>
+    }
+
+    <div class="section">
+      <h2 class="section-title">Services &amp; Pricing</h2>
+      @if (p.services.length === 0) {
+        <p class="empty-text">No services listed yet.</p>
+      } @else {
+        <div class="services-grid">
+          @for (s of p.services; track trackByService($index, s)) {
+            <div class="service-card">
+              <mat-icon class="service-icon">{{ getServiceIcon(s.serviceName) }}</mat-icon>
+              <div class="service-info">
+                <span class="service-name">{{ s.serviceName }}</span>
+                <span class="service-price">${{ s.price }}</span>
+              </div>
+              @if (!isMine()) {
+                <button mat-stroked-button color="primary" (click)="book(s.serviceName, s.serviceId)">Book</button>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Reviews</h2>
+      @if (reviews().length === 0) {
+        <p class="empty-text">No reviews yet.</p>
+      } @else {
+        <div class="reviews-list">
+          @for (r of reviews(); track trackByReview($index, r)) {
+            <div class="review-item">
+              <div class="review-header">
+                <span class="review-author">{{ r.requester.firstName }} {{ r.requester.lastName }}</span>
+                <div class="review-stars">
+                  @for (i of [1,2,3,4,5]; track i) {
+                    <mat-icon class="star-icon star-icon--sm">{{ starIcon(r.rating, i) }}</mat-icon>
+                  }
+                </div>
+              </div>
+              @if (r.comment) { <p class="review-comment">{{ r.comment }}</p> }
+              <p class="review-date">{{ r.createdAt | date:'mediumDate' }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

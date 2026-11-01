@@ -1,0 +1,80 @@
+<div class="wallet-page">
+  <div class="wallet-header">
+    <h1>{{ isProvider() ? 'Payments & earnings' : 'My payments' }}</h1>
+    <p>Online payments are held securely until the job is confirmed done. Pay-on-arrival jobs aren't listed here.</p>
+  </div>
+
+  @if (isProvider()) {
+    <div class="wallet-tabs">
+      <button mat-stroked-button [class.tab-active]="tab() === 'earned'" (click)="tab.set('earned')">
+        <mat-icon>savings</mat-icon> Earnings
+      </button>
+      <button mat-stroked-button [class.tab-active]="tab() === 'paid'" (click)="tab.set('paid')">
+        <mat-icon>receipt_long</mat-icon> Payments I made
+      </button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="state-center"><mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner></div>
+  } @else if (error()) {
+    <div class="state-center"><p>{{ error() }}</p></div>
+  } @else {
+    @if (totals(); as t) {
+      <div class="totals-grid">
+        <div class="total-card">
+          <span class="total-label">{{ tab() === 'earned' ? 'Pending' : 'Held' }}</span>
+          <span class="total-value">{{ t.HELD | currency }}</span>
+          <span class="total-sub">{{ tab() === 'earned' ? 'waiting for jobs to be completed' : 'until the job is done' }}</span>
+        </div>
+        <div class="total-card total-card--good">
+          <span class="total-label">{{ tab() === 'earned' ? 'Earned' : 'Paid out' }}</span>
+          <span class="total-value">{{ t.RELEASED | currency }}</span>
+          <span class="total-sub">{{ tab() === 'earned' ? 'completed jobs' : 'to providers' }}</span>
+        </div>
+        <div class="total-card">
+          <span class="total-label">Refunded</span>
+          <span class="total-value">{{ t.REFUNDED | currency }}</span>
+          <span class="total-sub">cancelled or declined</span>
+        </div>
+      </div>
+    }
+
+    @if (tab() === 'earned') {
+      <p class="wallet-note">
+        <mat-icon>info</mat-icon>
+        <span>Earnings are tracked here as soon as a job is completed. Automatic payouts to your bank account aren't connected yet.</span>
+      </p>
+    }
+
+    @if (entries().length === 0) {
+      <div class="state-center">
+        <mat-icon class="empty-icon">account_balance_wallet</mat-icon>
+        <h3>No payments yet</h3>
+        <p>{{ tab() === 'earned' ? 'Online payments for your jobs will show up here.' : 'When you pay for a booking online, it will show up here.' }}</p>
+      </div>
+    } @else {
+      <div class="entries">
+        @for (e of entries(); track trackByPayment($index, e)) {
+          <div class="entry">
+            <div class="entry-main">
+              <span class="entry-title">{{ e.service }} <span class="entry-who">{{ counterparty(e) }}</span></span>
+              <span class="entry-sub">
+                Booking #{{ e.bookingId }}
+                @if (e.scheduledDate) { · {{ e.scheduledDate | date:'MMM d, y · h:mm a' }} }
+                · paid with {{ e.method === 'paypal' ? 'PayPal' : 'card' }} on {{ e.createdAt | date:'MMM d' }}
+              </span>
+            </div>
+            <div class="entry-amount">
+              <span class="entry-price">{{ amountOf(e) | currency }}</span>
+              @if (tab() === 'earned' && e.platformFee > 0) {
+                <span class="entry-fee">after {{ e.platformFee | currency }} platform fee</span>
+              }
+              <span class="status-chip" [ngClass]="statusClass(e.status)">{{ statusLabel(e.status) }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

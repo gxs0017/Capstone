@@ -10,7 +10,7 @@
       <mat-label>Service Type</mat-label>
       <mat-select [formControl]="serviceFilter">
         <mat-option value="">All Services</mat-option>
-        @for (opt of serviceOptions; track opt) {
+        @for (opt of serviceOptions(); track opt) {
           <mat-option [value]="opt">{{ opt }}</mat-option>
         }
       </mat-select>
@@ -84,10 +84,12 @@
               <div class="provider-header">
                 <div class="provider-avatar">{{ getInitials(provider) }}</div>
                 <div>
-                  <mat-card-title>{{ provider.firstName }} {{ provider.lastName }}</mat-card-title>
+                  <mat-card-title>
+                    <a [routerLink]="['/providers', provider.id]" class="provider-name-link">{{ provider.firstName }} {{ provider.lastName }}</a>
+                  </mat-card-title>
                   <mat-card-subtitle>
                     <mat-icon class="location-icon">location_on</mat-icon>
-                    {{ provider.city }}, {{ provider.province }}
+                    {{ provider.neighbourhood ? provider.neighbourhood + ' · ' : '' }}{{ provider.city }}, {{ provider.province }}
                   </mat-card-subtitle>
                   @if (provider.avgRating) {
                     <div class="rating-badge">
@@ -123,18 +125,26 @@
                 <mat-icon>{{ expandedReviewsId() === provider.id ? 'expand_less' : 'reviews' }}</mat-icon>
                 {{ expandedReviewsId() === provider.id ? 'Hide' : 'Reviews' }}
               </button>
-              <button mat-button color="primary" (click)="toggleContact(provider.id)">
-                <mat-icon>{{ expandedContactId() === provider.id ? 'expand_less' : 'contact_mail' }}</mat-icon>
-                {{ expandedContactId() === provider.id ? 'Hide' : 'Contact' }}
-              </button>
+              <a mat-button color="primary" [routerLink]="['/providers', provider.id]">
+                <mat-icon>storefront</mat-icon> Storefront
+              </a>
+              <!-- Contact only appears when the provider chose to show their details -->
+              @if (provider.email || provider.phoneNumber) {
+                <button mat-button color="primary" (click)="toggleContact(provider.id)">
+                  <mat-icon>{{ expandedContactId() === provider.id ? 'expand_less' : 'contact_mail' }}</mat-icon>
+                  {{ expandedContactId() === provider.id ? 'Hide' : 'Contact' }}
+                </button>
+              }
             </mat-card-actions>
 
             @if (expandedContactId() === provider.id) {
               <div class="contact-details">
-                <div class="contact-row">
-                  <mat-icon class="contact-icon">email</mat-icon>
-                  <span>{{ provider.email }}</span>
-                </div>
+                @if (provider.email) {
+                  <div class="contact-row">
+                    <mat-icon class="contact-icon">email</mat-icon>
+                    <span>{{ provider.email }}</span>
+                  </div>
+                }
                 @if (provider.phoneNumber) {
                   <div class="contact-row">
                     <mat-icon class="contact-icon">phone</mat-icon>

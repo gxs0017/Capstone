@@ -128,4 +128,38 @@ export class AdminService {
   reviewFlaggedMessage(messageId: number, approve: boolean): Observable<{ message: string }> {
     return this.http.patch<{ message: string }>(`${this.API}/chat/flagged/${messageId}`, { approve });
   }
+
+  deletePost(postId: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.API}/posts/${postId}`);
+  }
+
+  getPayments(): Observable<AdminPaymentsOverview> {
+    return this.http.get<AdminPaymentsOverview>(`${this.API}/payments`);
+  }
+
+  settlePayments(): Observable<unknown> {
+    return this.http.post(`${this.API}/payments/settle`, {});
+  }
+}
+
+export interface AdminPaymentEntry {
+  paymentId: number;
+  bookingId: number;
+  service: string;
+  method: string;
+  status: string;
+  currency: string;
+  amount: number;
+  platformFee: number;
+  providerAmount: number;
+  createdAt: string;
+  payer: { id: number; name: string };
+  provider: { id: number; name: string };
+  refundError?: string | null;
+}
+
+export interface AdminPaymentsOverview {
+  currency: string;
+  totals: Record<string, { count: number; gross: number; fees: number }>;
+  entries: AdminPaymentEntry[];
 }

@@ -1,0 +1,97 @@
+<div class="directory-page">
+  <div class="directory-header">
+    <h1>Neighbourhood Directory</h1>
+    <p>
+      Service providers around you — nearest first.
+      @if (viewerArea(); as area) { Showing results near <strong>{{ area.neighbourhood || area.city }}</strong>. }
+      @else if (!authService.isLoggedIn()) { <a routerLink="/login">Sign in</a> to rank providers by how close they are to you. }
+    </p>
+  </div>
+
+  <div class="filter-bar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search by name, service or area</mat-label>
+      <input matInput [formControl]="searchFilter" placeholder="e.g. plumbing, Brampton, Marcus" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="service-field">
+      <mat-label>Service</mat-label>
+      <mat-select [formControl]="serviceFilter">
+        <mat-option value="">Any service</mat-option>
+        @for (s of serviceOptions(); track s) {
+          <mat-option [value]="s">{{ s }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <button mat-stroked-button (click)="clearFilters()"><mat-icon>clear</mat-icon> Clear</button>
+  </div>
+
+  @if (!loading()) {
+    <p class="result-count">{{ total() }} {{ total() === 1 ? 'listing' : 'listings' }}</p>
+  }
+
+  @if (loading()) {
+    <div class="state-center"><mat-progress-spinner mode="indeterminate" diameter="44"></mat-progress-spinner></div>
+  } @else if (entries().length === 0) {
+    <div class="state-center">
+      <mat-icon class="empty-icon">person_search</mat-icon>
+      <h3>No one found</h3>
+      <p>Try a different search, or clear the filters.</p>
+    </div>
+  } @else {
+    <div class="directory-grid">
+      @for (e of entries(); track trackByEntry($index, e)) {
+        <div class="entry-card">
+          <div class="entry-top">
+            <div class="avatar">{{ initials(e) }}</div>
+            <div class="entry-id">
+              <span class="entry-name">
+                <a [routerLink]="['/providers', e.id]">{{ e.firstName }} {{ e.lastName }}</a>
+              </span>
+              <span class="entry-area"><mat-icon>place</mat-icon> {{ e.neighbourhood ? e.neighbourhood + ' · ' : '' }}{{ e.city }}, {{ e.province }}</span>
+            </div>
+            @if (proximityLabel(e.proximity); as label) {
+              <span class="near-chip near-chip--{{ e.proximity }}">{{ label }}</span>
+            }
+          </div>
+
+          <div class="entry-role">
+            <span class="role-chip role-chip--pro">Service provider</span>
+            @if (e.avgRating !== null) {
+              <span class="rating">
+                @for (i of [1,2,3,4,5]; track i) { <mat-icon class="star">{{ starIcon(e.avgRating!, i) }}</mat-icon> }
+                <span class="rating-text">{{ e.avgRating }} ({{ e.reviewCount }})</span>
+              </span>
+            }
+          </div>
+
+          @if (e.bio) { <p class="entry-bio">{{ e.bio }}</p> }
+
+          @if (e.services.length > 0) {
+            <div class="service-list">
+              @for (s of e.services; track s.name) {
+                <span class="service-pill">{{ s.name }} · {{ s.price | currency }}</span>
+              }
+            </div>
+          }
+
+          <div class="entry-actions">
+            <a mat-stroked-button [routerLink]="['/providers', e.id]"><mat-icon>storefront</mat-icon> Storefront</a>
+            @if (!isMe(e) && !authService.isAdmin()) {
+              <button mat-stroked-button color="primary" [disabled]="messagingId() === e.id" (click)="message(e)">
+                <mat-icon>chat</mat-icon> Message
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (totalPages() > 1) {
+      <div class="pagination">
+        <button mat-icon-button [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)" aria-label="Previous page"><mat-icon>chevron_left</mat-icon></button>
+        <span class="page-info">Page {{ currentPage() }} of {{ totalPages() }}</span>
+        <button mat-icon-button [disabled]="currentPage() === totalPages()" (click)="goToPage(currentPage() + 1)" aria-label="Next page"><mat-icon>chevron_right</mat-icon></button>
+      </div>
+    }
+  }
+</div>

@@ -7,6 +7,9 @@ const jwt     = require('jsonwebtoken');
 const User    = require('../models/User');
 const { toProviderDTO, toRoleBasedProfile } = require('../mappers/userMapper');
 const { logAction } = require('../models/AuditLog');
+const { normalizePostal, tidyCity, inCanada } = require('../utils/places');
+const { checkServiceName } = require('../utils/serviceNames');
+const { refreshUserInBackground } = require('../utils/neighbourhoods');
 
 // ----------------------------------------------------------------
 // POST /api/auth/register
@@ -35,6 +38,14 @@ const registerUser = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // Tidy the address (the validator already checked city/province/postal agree)
+        const city       = tidyCity(address.city);
+        const province   = String(address.province).toUpperCase();
+        const postalCode = normalizePostal(address.postalCode);
+        const lat = Number(address.lat);
+        const lng = Number(address.lng);
+        const hasCoords = address.lat != null && address.lng != null && inCanada(lat, lng);
+
         // Insert user
         const newUserId = await User.createUser({
             firstName, lastName,
@@ -42,24 +53,29 @@ const registerUser = async (req, res) => {
             dateOfBirth,
             email,
             hashedPassword,
-            street:     address.street,
-            city:       address.city,
-            province:   address.province,
-            postalCode: address.postalCode,
+            street:     String(address.street).trim(),
+            city,
+            province,
+            postalCode,
             role,
+            lat: hasCoords ? lat : null,
+            lng: hasCoords ? lng : null,
         });
 
-        // If provider, link their services
+        // If provider, link their services (any name is allowed; new names become new services)
         const savedServices = [];
         if (role === 'PROVIDER' && Array.isArray(services) && services.length > 0) {
-            for (const name of services) {
-                const svc = await User.findServiceByName(name);
-                if (svc) {
-                    await User.addProviderService(newUserId, svc.service_id);
-                    savedServices.push(name);
-                }
+            for (const raw of services) {
+                const { name } = checkServiceName(raw);
+                if (!name || savedServices.includes(name)) continue;
+                const serviceId = await User.findOrCreateService(name);
+                await User.addProviderService(newUserId, serviceId);
+                savedServices.push(name);
             }
         }
+
+        // Work out their neighbourhood from the address (no form field needed)
+        refreshUserInBackground(newUserId);
 
         // Issue JWT
         const token = jwt.sign(
@@ -76,8 +92,8 @@ const registerUser = async (req, res) => {
             user: {
                 id: newUserId,
                 firstName, lastName, email, role,
-                city: address.city,
-                province: address.province,
+                city,
+                province,
                 services: savedServices,
             },
         });
@@ -133,6 +149,9 @@ const loginUser = async (req, res) => {
 
         logAction(user.user_id, 'LOGIN', null, req.ip);
 
+        // Keep their neighbourhood current (picks up newly added neighbourhoods) without slowing login
+        refreshUserInBackground(user.user_id);
+
         return res.json({
             token,
             user: toRoleBasedProfile(user, services),
@@ -187,4 +206,80 @@ const getProviders = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getProfile, getProviders };
+// ----------------------------------------------------------------
+// GET /api/auth/providers/:id/profile — public storefront page
+// (no auth required — same visibility as the public provider search)
+// ----------------------------------------------------------------
+const getProviderProfile = async (req, res) => {
+    try {
+        const profile = await User.getProviderProfile(req.params.id);
+        if (!profile) {
+            return res.status(404).json({ message: 'Provider not found.' });
+        }
+        return res.json(profile);
+    } catch (error) {
+        console.error('Get provider profile error:', error);
+        return res.status(500).json({ message: 'Error fetching provider profile.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// GET /api/auth/services  (public) — every service type with its id
+// ----------------------------------------------------------------
+const listServices = async (_req, res) => {
+    try {
+        return res.json(await User.listServices());
+    } catch (error) {
+        console.error('List services error:', error);
+        return res.status(500).json({ message: 'Error fetching services.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// PATCH /api/auth/profile/directory  (protected)
+// Body: { bio?: string | null }
+// Providers edit the short bio shown on their directory card and storefront.
+// ----------------------------------------------------------------
+const updateDirectoryProfile = async (req, res) => {
+    try {
+        if (req.user.role !== 'PROVIDER') {
+            return res.status(403).json({ message: 'Only service providers have a public listing.' });
+        }
+        const changed = await User.updateDirectoryProfile(req.user.id, { bio: req.body.bio });
+        if (!changed) {
+            return res.status(400).json({ message: 'Nothing to update.' });
+        }
+
+        const user = await User.findById(req.user.id);
+        const services = user.role === 'PROVIDER' ? await User.getServicesByUserId(user.user_id) : [];
+        return res.json(toRoleBasedProfile(user, services));
+    } catch (error) {
+        console.error('Update directory profile error:', error);
+        return res.status(500).json({ message: 'Error updating your directory profile.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// PATCH /api/auth/profile/contact  (PROVIDER)
+// Body: { showEmail?: boolean, showPhone?: boolean }
+// Whether other people can see this provider's email / phone number.
+// ----------------------------------------------------------------
+const updateContactPrefs = async (req, res) => {
+    try {
+        const changed = await User.updateContactPrefs(req.user.id, {
+            showEmail: req.body.showEmail,
+            showPhone: req.body.showPhone,
+        });
+        if (!changed) {
+            return res.status(400).json({ message: 'Nothing to update.' });
+        }
+        const user = await User.findById(req.user.id);
+        const services = await User.getServicesByUserId(user.user_id);
+        return res.json(toRoleBasedProfile(user, services));
+    } catch (error) {
+        console.error('Update contact prefs error:', error);
+        return res.status(500).json({ message: 'Error updating your contact settings.' });
+    }
+};
+
+module.exports = { registerUser, loginUser, getProfile, getProviders, getProviderProfile, updateDirectoryProfile, listServices, updateContactPrefs };

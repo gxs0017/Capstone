@@ -1,0 +1,20 @@
+@if (loading()) {
+  <div class="state-center">
+    <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
+    <p>Loading the card form…</p>
+  </div>
+}
+
+@if (error()) {
+  <div class="error-message">{{ error() }}</div>
+}
+
+@if (!loading() && elementsOptions.clientSecret) {
+  <ngx-stripe-elements [stripe]="stripe" [elementsOptions]="elementsOptions">
+    <ngx-stripe-payment />
+  </ngx-stripe-elements>
+
+  <button mat-raised-button color="primary" class="pay-button" [disabled]="processing()" (click)="pay()">
+    @if (processing()) { Processing payment… } @else { Pay now }
+  </button>
+}

@@ -1,78 +1,97 @@
-<!-- Created by Broinson Jeyarajah -->
-<!-- Student Number: 91568803 -->
-
-<!-- -------REFERENCES USED--------- -->
-<!-- https://ngx-stripe.dev/docs/payment-element -->
-<!-- https://docs.stripe.com/payments/payment-element -->
-<!-- https://angular.dev/guide/templates/control-flow -->
-<!-- https://material.angular.dev/components/button/overview -->
-<!-- Previous course/lecture material – Angular Mobile Web-based Applications/Hybrid Mobile Web -->
-
-
 <div class="payment-page">
   <mat-card class="payment-card">
     <mat-card-content>
 
       <a mat-button routerLink="/my-bookings" class="back-link">
-        <mat-icon>arrow_back</mat-icon>Back to My Bookings </a>
+        <mat-icon>arrow_back</mat-icon> Back to My Bookings
+      </a>
 
       <h1>Secure Payment</h1>
 
       @if (loading()) {
         <div class="state-center">
-          <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
-          <p>Loading Payment Form...</p>
+          <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+          <p>Loading payment details…</p>
         </div>
       }
 
+      @if (error() && !summary()) {
+        <div class="error-message">{{ error() }}</div>
+        <a mat-stroked-button routerLink="/my-bookings">View My Bookings</a>
+      }
 
       @if (success()) {
         <div class="success-message">
           <mat-icon>check_circle</mat-icon>
           <div>
-            <p>Your payment was accepted</p>
+            <strong>Payment received</strong>
+            <p>Your money is held securely and is released to {{ summary()?.provider?.name }} once the job is marked complete.
+               If the booking is cancelled in time, you're refunded automatically.</p>
           </div>
         </div>
-
-        <a mat-raised-button color="primary" routerLink="/my-bookings">
-          Return to My Bookings
-        </a>
-      }
-
-      @if (error()) {
-          <div class="error-message">{{    error()   }}
-      </div>
-      }
-
-     
-      @if (!loading() && !success() && elementsOptions.clientSecret) {
-        <div class="amount">
-          Service Fee: ${{ (amount() / 100).toFixed(2) }} CAD
+        <div class="success-actions">
+          <a mat-raised-button color="primary" routerLink="/my-bookings">Back to My Bookings</a>
+          <a mat-stroked-button routerLink="/wallet">View my payments</a>
         </div>
+      }
 
-        <ngx-stripe-elements
-          [stripe]="stripe"
-          [elementsOptions]="elementsOptions">
-       
-          <ngx-stripe-payment />
-        </ngx-stripe-elements>
+      @if (summary(); as s) {
+        @if (!success()) {
+          <!-- What you're paying for — the total comes from the server, never from this page -->
+          <div class="order-summary">
+            <div class="order-row">
+              <span class="order-label">Service</span>
+              <span class="order-value">{{ s.service }}</span>
+            </div>
+            <div class="order-row">
+              <span class="order-label">Provider</span>
+              <span class="order-value">{{ s.provider.name }}</span>
+            </div>
+            <div class="order-row order-row--top">
+              <span class="order-label">{{ s.recurring ? s.sessions + ' weekly sessions' : 'When' }}</span>
+              <span class="order-value">
+                @for (d of s.scheduledDates; track $index) {
+                  <span class="order-date">{{ d | date:'EEE, MMM d · h:mm a' }}</span>
+                }
+              </span>
+            </div>
+            <div class="order-row order-total">
+              <span>Total</span>
+              <span>{{ s.total | currency:s.currency }} {{ s.currency }}</span>
+            </div>
+          </div>
 
-        <button
-          mat-raised-button
-          color="primary"
-          class="pay-button"
-          [disabled]="PaymentPROCESSING()"
-          (click)="pay()">
+          <p class="escrow-note">
+            <mat-icon>lock</mat-icon>
+            <span>Your payment is held securely and only released to the provider after the job is done.
+              Cancelled or declined? You're refunded.</span>
+          </p>
 
-
-          <!-- Checking if payment was accepted or not -->
-          @if (PaymentPROCESSING()) {
-            Processsing Payment....
-          } 
-          @else {
-             Pay Safely Please
+          @if (s.methods.paypal && s.methods.stripe) {
+            <div class="method-tabs">
+              <button mat-stroked-button [class.tab-active]="method() === 'paypal'" (click)="choose('paypal')">
+                <mat-icon>account_balance_wallet</mat-icon> PayPal
+              </button>
+              <button mat-stroked-button [class.tab-active]="method() === 'card'" (click)="choose('card')">
+                <mat-icon>credit_card</mat-icon> Card
+              </button>
+            </div>
           }
-      </button>
+
+          @if (method() === 'paypal') {
+            @if (paypalError()) {
+              <div class="error-message">{{ paypalError() }}</div>
+            }
+            @if (paypalLoading()) {
+              <div class="state-center"><mat-progress-spinner mode="indeterminate" diameter="28"></mat-progress-spinner></div>
+            }
+            <div id="paypal-button-container"></div>
+          }
+
+          @if (method() === 'card') {
+            <app-card-payment [bookingId]="bookingId" (paid)="onCardPaid()"></app-card-payment>
+          }
+        }
       }
     </mat-card-content>
   </mat-card>

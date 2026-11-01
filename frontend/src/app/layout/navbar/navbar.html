@@ -5,7 +5,9 @@
   <span class="spacer"></span>
 
   <!-- Nav Links -->
-  <a mat-button routerLink="/search" routerLinkActive="active-link">Browse Services</a>
+  <a mat-button routerLink="/search" routerLinkActive="active-link">Services</a>
+  <a mat-button routerLink="/board" routerLinkActive="active-link">Board</a>
+  <a mat-button routerLink="/directory" routerLinkActive="active-link">Directory</a>
 
   @if (authService.isLoggedIn() && !authService.isAdmin()) {
     <a mat-button routerLink="/my-bookings" routerLinkActive="active-link">My Bookings</a>
@@ -58,8 +60,16 @@
                     matBadgeColor="warn" matBadgeSize="small">forum</mat-icon>
           <span>Messages</span>
         </button>
+        <button mat-menu-item routerLink="/wallet">
+          <mat-icon>account_balance_wallet</mat-icon>
+          <span>{{ authService.isProvider() ? 'Payments & earnings' : 'Payments' }}</span>
+        </button>
       }
       @if (authService.isProvider()) {
+        <button mat-menu-item [routerLink]="['/providers', authService.currentUser()?.id]">
+          <mat-icon>storefront</mat-icon>
+          <span>My storefront</span>
+        </button>
         <button mat-menu-item routerLink="/requests">
           <mat-icon>inbox</mat-icon>
           <span>Requests</span>

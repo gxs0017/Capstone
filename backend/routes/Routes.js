@@ -6,22 +6,27 @@ const express        = require('express');
 const router         = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { requireRole, checkBlocked } = require('../middleware/roles');
-const { authLimiter, messageLimiter } = require('../middleware/rateLimit');
+const { authLimiter, messageLimiter, commentLimiter, postLimiter, geoLimiter } = require('../middleware/rateLimit');
 const { validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent, validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice,
-        validateStartConversation, validateSendMessage, validatePinBooking, validateReviewMessage } = require('../middleware/validators');
+        validateStartConversation, validateSendMessage, validatePinBooking, validateReviewMessage,
+        validateCreatePost, validateCreateComment, validateDirectoryProfile, validateContactPrefs } = require('../middleware/validators');
 
 // Controllers
-const { registerUser, loginUser, getProfile, getProviders } = require('../controllers/Controller');
+const { registerUser, loginUser, getProfile, getProviders, getProviderProfile, updateDirectoryProfile, listServices, updateContactPrefs } = require('../controllers/Controller');
 const { listUsers, getUserById, updateUser, toggleBlock, deleteUser, getStats, listBookings, getAuditLogs,
         listFlaggedMessages, reviewFlaggedMessage } = require('../controllers/adminController');
 const { getMyServices, addService, removeService, getAvailableServices, updatePrice } = require('../controllers/providerController');
 const { getQuote, createBooking, getMyBookings, updateBookingStatus, getBookingById } = require('../controllers/bookingController');
-const { createPaymentIntent, confirmPayment } = require('../controllers/paymentController');
+const { getMethods, getSummary, createPaymentIntent, confirmPayment, getMyPayments, getAdminOverview, settleNow } = require('../controllers/paymentController');
 const { createOrder: paypalCreateOrder, capture: paypalCapture, config: paypalConfig } = require('../controllers/paypalController');
 const { submitReview, getReviewsForProvider } = require('../controllers/reviewController');
-const { getProviderAvailability, getMyAvailability, addAvailability, removeAvailability } = require('../controllers/availabilityController');
+const { getProviderAvailability, getProviderSlots, getMyAvailability, addAvailability, removeAvailability } = require('../controllers/availabilityController');
 const { getConversations, getUnreadCount, startConversation, getBookingOptions, pinBooking,
         getMessages, markRead, sendMessage } = require('../controllers/chatController');
+const { getPosts, getMyPosts, getPost, createPost, closePost, deletePostAdmin,
+        getComments, addComment, deleteComment, toggleLike } = require('../controllers/postController');
+const { getDirectory, getRecommendations } = require('../controllers/directoryController');
+const { searchAddress } = require('../controllers/geoController');
 
 // ── Public routes (no token needed) ──────────────────────────────────────────
 router.post('/register', authLimiter, validateRegister, registerUser);
@@ -30,8 +35,18 @@ router.post('/login',    authLimiter, validateLogin, loginUser);
 
 // ── Authenticated routes (any logged-in user) ───────────────────────────────
 router.get('/profile',   authMiddleware, checkBlocked, getProfile);
+router.patch('/profile/directory', authMiddleware, checkBlocked, requireRole('PROVIDER'), validateDirectoryProfile, updateDirectoryProfile);
+router.patch('/profile/contact',   authMiddleware, checkBlocked, requireRole('PROVIDER'), validateContactPrefs, updateContactPrefs);
+router.get('/geo/search', geoLimiter, searchAddress);
+router.get('/services',   listServices);
 router.get('/providers',  getProviders);
+router.get('/providers/:id/profile', getProviderProfile);
 router.get('/providers/:providerId/availability', authMiddleware, checkBlocked, getProviderAvailability);
+router.get('/providers/:providerId/slots',        authMiddleware, checkBlocked, getProviderSlots);
+
+// ── Neighbourhood directory ("yellow pages") and recommendations — service providers only, public ──
+router.get('/directory', authMiddleware.optional, getDirectory);
+router.get('/recommendations', authMiddleware.optional, getRecommendations);
 
 // ── Provider routes ─────────────────────────────────────────────────────────
 router.get('/provider/my-services',              authMiddleware, checkBlocked, requireRole('PROVIDER'), getMyServices);
@@ -49,13 +64,18 @@ router.post('/bookings',              authMiddleware, checkBlocked, requireRole(
 router.get('/bookings/my',            authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getMyBookings);
 router.get('/bookings/:id',           authMiddleware, checkBlocked, getBookingById);
 router.patch('/bookings/:id/status',  authMiddleware, checkBlocked, requireRole('PROVIDER', 'REQUESTER', 'ADMIN'), validateBookingStatus, updateBookingStatus);
-router.post( '/payments/create-intent', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreatePaymentIntent, createPaymentIntent);
-router.post('/payments/confirm', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), confirmPayment);
+
+// ── Payments (the amount is always computed server-side from the stored booking price) ──
+router.get('/payments/methods',               authMiddleware, getMethods);
+router.get('/payments/summary/:bookingId',    authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getSummary);
+router.get('/payments/mine',                  authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), getMyPayments);
+router.post('/payments/create-intent',        authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreatePaymentIntent, createPaymentIntent);
+router.post('/payments/confirm',              authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), confirmPayment);
 
 // -- PayPal payment routes  --
-router.get('/payments/paypal/config', authMiddleware, paypalConfig);
-router.post('/payments/paypal/create-order', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), paypalCreateOrder);
-router.post('/payments/paypal/capture', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), paypalCapture);
+router.get('/payments/paypal/config',         authMiddleware, paypalConfig);
+router.post('/payments/paypal/create-order',  authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreatePaymentIntent, paypalCreateOrder);
+router.post('/payments/paypal/capture',       authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), validateCreatePaymentIntent, paypalCapture);
 
 // ── Chat routes (any logged-in user can message any other) ─────────────────
 router.get('/chat/conversations',                             authMiddleware, checkBlocked, getConversations);
@@ -67,9 +87,21 @@ router.get('/chat/conversations/:conversationId/messages',     authMiddleware, c
 router.patch('/chat/conversations/:conversationId/read',       authMiddleware, checkBlocked, markRead);
 router.post('/chat/conversations/:conversationId/messages',    authMiddleware, checkBlocked, messageLimiter, validateSendMessage, sendMessage);
 
-// ── Review routes (REQUESTER submits, anyone logged-in can read) ───────────
+// ── Review routes (REQUESTER submits; reading is public, same as the provider profile page) ─
 router.post('/reviews',                    authMiddleware, checkBlocked, requireRole('REQUESTER'), submitReview);
-router.get('/reviews/provider/:providerId', authMiddleware, checkBlocked, getReviewsForProvider);
+router.get('/reviews/provider/:providerId', getReviewsForProvider);
+
+// ── Community Board: browsing + reading comments is public; posting, commenting and liking need a sign-in ──
+router.get('/posts',                         authMiddleware.optional, getPosts);
+router.get('/posts/mine',                    authMiddleware, checkBlocked, getMyPosts);
+router.post('/posts',                        authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), postLimiter, validateCreatePost, createPost);
+router.get('/posts/:id',                     authMiddleware.optional, getPost);
+router.patch('/posts/:id/close',             authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), closePost);
+router.post('/posts/:id/like',               authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), toggleLike);
+router.get('/posts/:id/comments',            getComments);
+router.post('/posts/:id/comments',           authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER'), commentLimiter, validateCreateComment, addComment);
+router.delete('/posts/:id/comments/:commentId', authMiddleware, checkBlocked, requireRole('REQUESTER', 'PROVIDER', 'ADMIN'), deleteComment);
+router.delete('/admin/posts/:id',            authMiddleware, checkBlocked, requireRole('ADMIN'), deletePostAdmin);
 
 // ── Admin routes ────────────────────────────────────────────────────────────
 router.get('/admin/users',              authMiddleware, checkBlocked, requireRole('ADMIN'), listUsers);
@@ -80,6 +112,8 @@ router.patch('/admin/users/:id/block',  authMiddleware, checkBlocked, requireRol
 router.delete('/admin/users/:id',       authMiddleware, checkBlocked, requireRole('ADMIN'), deleteUser);
 router.get('/admin/stats',              authMiddleware, checkBlocked, requireRole('ADMIN'), getStats);
 router.get('/admin/audit-logs',         authMiddleware, checkBlocked, requireRole('ADMIN'), getAuditLogs);
+router.get('/admin/payments',           authMiddleware, checkBlocked, requireRole('ADMIN'), getAdminOverview);
+router.post('/admin/payments/settle',   authMiddleware, checkBlocked, requireRole('ADMIN'), settleNow);
 router.get('/admin/chat/flagged',           authMiddleware, checkBlocked, requireRole('ADMIN'), listFlaggedMessages);
 router.patch('/admin/chat/flagged/:messageId', authMiddleware, checkBlocked, requireRole('ADMIN'), validateReviewMessage, reviewFlaggedMessage);
 

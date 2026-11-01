@@ -6,6 +6,7 @@ const pool = require('../config/db');
 const { toAdminUserDTO, toAdminUserDTOList, toBookingDTOList } = require('../mappers/userMapper');
 const { logAction } = require('../models/AuditLog');
 const { expireStalePending } = require('../utils/bookingExpiry');
+const ledger = require('../utils/paymentLedger');
 const Chat = require('../models/Chat');
 const { emitToConversation } = require('../config/socket');
 const { toFlaggedMessageDTOList, toMessageDTOList } = require('../mappers/chatMapper');
@@ -306,6 +307,7 @@ const deleteUser = async (req, res) => {
         await conn.commit();
 
         logAction(req.user.id, 'USER_DELETED', 'target: ' + req.params.id, req.ip);
+        ledger.settle(); // return any prepaid money for the sessions that were just cancelled
         return res.json({ message: 'User deleted successfully.' });
     } catch (err) {
         await conn.rollback().catch(() => {});

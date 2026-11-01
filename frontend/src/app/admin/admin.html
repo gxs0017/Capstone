@@ -67,6 +67,9 @@
     <button mat-stroked-button [class.tab-active]="tab() === 'moderation'" (click)="tab.set('moderation')">
       <mat-icon>gavel</mat-icon> Moderation
     </button>
+    <button mat-stroked-button [class.tab-active]="tab() === 'payments'" (click)="tab.set('payments')">
+      <mat-icon>payments</mat-icon> Payments
+    </button>
   </div>
 
   @if (tab() === 'bookings') {
@@ -75,6 +78,10 @@
 
   @if (tab() === 'logs') {
     <app-admin-logs></app-admin-logs>
+  }
+
+  @if (tab() === 'payments') {
+    <app-admin-payments></app-admin-payments>
   }
 
   @if (tab() === 'moderation') {

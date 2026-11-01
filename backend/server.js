@@ -8,6 +8,7 @@ const pool    = require('./config/db');
 const Routes  = require('./routes/Routes');
 const { globalLimiter } = require('./middleware/rateLimit');
 const { startExpiryJob } = require('./utils/bookingExpiry');
+const { startSweeper } = require('./utils/neighbourhoods');
 const { initSocket } = require('./config/socket');
 
 const app  = express();
@@ -40,6 +41,7 @@ pool.getConnection()
         initSocket(server);
         server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
         startExpiryJob();
+        if (process.env.NEIGHBOURHOOD_SWEEP !== 'off') startSweeper();
     })
     .catch(err => {
         console.error('MySQL connection failed:', err.message);

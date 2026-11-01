@@ -6,6 +6,11 @@
 const MIN_LEAD_MINUTES        = 60;      // cannot book less than 1 hour before start
 const CANCEL_CUTOFF_HOURS     = 24;      // requesters cannot cancel inside 24h of start (admins are exempt)
 const PENDING_EXPIRY_HOURS    = 24;      // a request the provider hasn't accepted in this long expires
+const SESSION_MINUTES         = 60;      // every booking reserves one hour of the provider's time
+const SLOT_STEP_MINUTES       = 30;      // start times are offered every half hour
+const BOOKING_HORIZON_DAYS    = 90;      // how far ahead a booking can be made
+const DEFAULT_OPEN_MINUTES    = 8 * 60;  // hours assumed for a provider who hasn't published a weekly schedule
+const DEFAULT_CLOSE_MINUTES   = 20 * 60;
 const RECURRING_DISCOUNT_PCT  = 10;      // prepaid weekly pack discount vs one-time
 const RECURRING_SESSION_OPTIONS = [4, 8]; // pack sizes offered
 
@@ -72,6 +77,11 @@ const weeklyDates = (start, sessions) =>
     });
 
 module.exports = {
+    SESSION_MINUTES,
+    SLOT_STEP_MINUTES,
+    BOOKING_HORIZON_DAYS,
+    DEFAULT_OPEN_MINUTES,
+    DEFAULT_CLOSE_MINUTES,
     MIN_LEAD_MINUTES,
     CANCEL_CUTOFF_HOURS,
     PENDING_EXPIRY_HOURS,

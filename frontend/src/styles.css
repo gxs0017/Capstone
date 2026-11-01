@@ -1,1 +1,172 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles + design tokens. Component files use these instead of
+   hardcoding one-off colors/radii, so the whole app stays visually consistent. */
+
+:root {
+  /* Semantic status colors — single source of truth for every success/
+     warning/error/info banner, badge and chip in the app. */
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-success-on-bg: #065f46;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-warning-on-bg: #92400e;
+  --color-error: #dc2626;
+  --color-error-bg: #fef2f2;
+  --color-error-on-bg: #991b1b;
+  --color-info: #2563eb;
+  --color-info-bg: #eff6ff;
+  --color-info-on-bg: #1e40af;
+  --color-neutral-bg: #f3f4f6;
+  --color-neutral-on-bg: #4b5563;
+  --color-star: #f59e0b;
+  --color-complete-bg: #e0e7ff;
+  --color-complete-on-bg: #3730a3;
+
+  /* Spacing + radius + elevation scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 20px 48px rgba(15, 23, 42, 0.14), 0 6px 16px rgba(15, 23, 42, 0.06);
+
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--mat-sys-primary);
+}
+
+::selection {
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+}
+
+/* Filled buttons/FABs with color="primary|accent|warn" don't resolve a
+   container background from this Material version's system theme on their
+   own (text/outline colors do resolve fine) — set it explicitly so a
+   "raised primary" button actually looks like one. */
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-fab.mat-primary,
+.mat-mdc-mini-fab.mat-primary {
+  background-color: var(--mat-sys-primary) !important;
+  color: var(--mat-sys-on-primary) !important;
+}
+
+.mat-mdc-raised-button.mat-accent,
+.mat-mdc-unelevated-button.mat-accent,
+.mat-mdc-fab.mat-accent,
+.mat-mdc-mini-fab.mat-accent {
+  background-color: var(--mat-sys-tertiary) !important;
+  color: var(--mat-sys-on-tertiary) !important;
+}
+
+.mat-mdc-raised-button.mat-warn,
+.mat-mdc-unelevated-button.mat-warn,
+.mat-mdc-fab.mat-warn,
+.mat-mdc-mini-fab.mat-warn {
+  background-color: var(--mat-sys-error) !important;
+  color: var(--mat-sys-on-error) !important;
+}
+
+.mat-mdc-icon-button.mat-primary {
+  --mat-icon-button-icon-color: var(--mat-sys-primary);
+}
+
+.mat-mdc-icon-button.mat-warn {
+  --mat-icon-button-icon-color: var(--mat-sys-error);
+}
+
+/* Consistent, slightly elevated card treatment everywhere a mat-card is used,
+   plus a smooth hover lift wherever a component already opts into one via
+   its own `:hover { transform/box-shadow }` rules. */
+.mat-mdc-card {
+  box-shadow: var(--shadow-sm) !important;
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+/* Visible, tasteful focus state for keyboard users (buttons, links, form
+   controls) instead of the browser default / nothing at all. */
+a:focus-visible,
+button:focus-visible,
+.mat-mdc-button:focus-visible,
+.mat-mdc-raised-button:focus-visible,
+.mat-mdc-outlined-button:focus-visible,
+.mat-mdc-icon-button:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+/* Thin, unobtrusive scrollbar for scrollable panels (chat thread, sidebars) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mat-sys-outline-variant) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--mat-sys-outline-variant);
+  border-radius: var(--radius-pill);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Shared banner pattern (error/success/warning/info) used across
+   login/register/booking/review/availability/payments/my-bookings so every
+   page's inline message looks identical instead of each one picking its
+   own one-off colors. */
+.app-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+}
+
+.app-banner--error {
+  background: var(--color-error-bg);
+  color: var(--color-error-on-bg);
+}
+
+.app-banner--success {
+  background: var(--color-success-bg);
+  color: var(--color-success-on-bg);
+}
+
+.app-banner--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-on-bg);
+}
+
+.app-banner--info {
+  background: var(--color-info-bg);
+  color: var(--color-info-on-bg);
+}

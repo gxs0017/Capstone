@@ -65,8 +65,10 @@ async function main() {
     const providerId = registerRes.body?.user?.id;
 
     // ── 5. Create a real booking between james and the fresh provider ──────
+    const when = new Date(); when.setDate(when.getDate() + 3); when.setHours(10, 0, 0, 0);
     const createBookingRes = await api('POST', '/bookings', jamesToken, {
         providerId, serviceId: 3, // Tutoring
+        scheduledDate: when.toISOString(),
     });
     check('create booking james -> fresh provider', createBookingRes.status === 201, createBookingRes);
     const newBookingId = createBookingRes.body?.bookingId;
@@ -164,6 +166,14 @@ async function main() {
     const flagged = await api('GET', '/admin/chat/flagged', adminTestToken);
     check('admin flagged-messages endpoint responds (empty, no bot yet)', flagged.status === 200 && Array.isArray(flagged.body) && flagged.body.length === 0, flagged);
 
+    // Remove the disposable rows this run created (only the tests' own fingerprints)
+    try {
+        const pool = require('./config/db');
+        await require('./utils/testCleanup').removeTestData(pool);
+        await pool.end();
+    } catch (err) {
+        console.log('Test-data cleanup skipped:', err.message);
+    }
     console.log(`\n${passCount} passed, ${failCount} failed.`);
     console.log(`Test provider account created: ${providerEmail} / TestPass1234 (id ${providerId}) — safe to keep or delete.`);
     console.log(`Test booking created: #${newBookingId} between james (116) and provider ${providerId}.`);

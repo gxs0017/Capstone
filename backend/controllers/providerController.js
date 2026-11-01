@@ -3,6 +3,9 @@
 
 const pool = require('../config/db');
 const User = require('../models/User');
+const { checkServiceName } = require('../utils/serviceNames');
+
+const MAX_SERVICES = 20;
 
 // ----------------------------------------------------------------
 // GET /api/provider/my-services — list services the current provider offers
@@ -30,15 +33,20 @@ const getMyServices = async (req, res) => {
 // ----------------------------------------------------------------
 const addService = async (req, res) => {
     try {
-        const { serviceName, price } = req.body;
-        if (!serviceName) {
-            return res.status(400).json({ message: 'serviceName is required.' });
+        const { price } = req.body;
+        const { name: serviceName, error } = checkServiceName(req.body.serviceName);
+        if (error) {
+            return res.status(400).json({ message: error });
         }
 
-        const svc = await User.findServiceByName(serviceName);
-        if (!svc) {
-            return res.status(404).json({ message: `Service "${serviceName}" does not exist.` });
+        // Providers can add any service name; a new name creates a new service tag
+        const [[{ count }]] = await pool.execute(
+            'SELECT COUNT(*) AS count FROM provider_details WHERE user_id = ?', [req.user.id]
+        );
+        if (count >= MAX_SERVICES) {
+            return res.status(400).json({ message: `You can offer at most ${MAX_SERVICES} services.` });
         }
+        const svc = { service_id: await User.findOrCreateService(serviceName) };
 
         // Check if already linked
         const [existing] = await pool.execute(

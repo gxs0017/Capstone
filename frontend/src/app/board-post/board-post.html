@@ -1,0 +1,165 @@
+<div class="post-page">
+  <a mat-button routerLink="/board" class="back-link"><mat-icon>arrow_back</mat-icon> Community Board</a>
+
+  @if (loading()) {
+    <div class="state-center"><mat-progress-spinner mode="indeterminate" diameter="44"></mat-progress-spinner></div>
+  } @else if (notFound()) {
+    <div class="state-center">
+      <mat-icon class="empty-icon">search_off</mat-icon>
+      <h2>This post isn't available</h2>
+      <p>It may have been removed.</p>
+      <a mat-stroked-button routerLink="/board">Back to the board</a>
+    </div>
+  } @else if (post(); as p) {
+    <article class="post-card">
+      @if (p.status === 'CLOSED') {
+        <div class="closed-banner"><mat-icon>check_circle</mat-icon> This post was marked fulfilled. Comments are closed.</div>
+      }
+
+      <header class="post-header">
+        <div class="avatar">{{ initials(p.poster.firstName, p.poster.lastName) }}</div>
+        <div class="poster-info">
+          <span class="poster-name">
+            @if (p.poster.role === 'PROVIDER') {
+              <a [routerLink]="['/providers', p.poster.id]">{{ p.poster.firstName }} {{ p.poster.lastName }}</a>
+              <span class="pro-badge">PRO</span>
+            } @else {
+              {{ p.poster.firstName }} {{ p.poster.lastName }}
+            }
+          </span>
+          <span class="post-meta">@if (p.city) { {{ p.city }} · } {{ ago(p.createdAt) }}</span>
+        </div>
+        @if (meta(); as m) {
+          <span class="type-chip"><mat-icon class="type-chip-icon">{{ m.icon }}</mat-icon> {{ m.label }}</span>
+        }
+      </header>
+
+      <h1 class="post-title">{{ p.title }}</h1>
+      <p class="post-description">{{ p.description }}</p>
+      @if (priceText(); as price) { <div class="post-price">{{ price }}</div> }
+
+      <footer class="post-footer">
+        <button type="button" class="action-btn" [class.action-btn--on]="p.likedByMe" (click)="toggleLike()" [attr.aria-pressed]="p.likedByMe">
+          <mat-icon>{{ p.likedByMe ? 'favorite' : 'favorite_border' }}</mat-icon>
+          {{ p.likeCount > 0 ? p.likeCount : 'Thanks' }}
+        </button>
+        <span class="action-static"><mat-icon>chat_bubble_outline</mat-icon> {{ p.commentCount }}</span>
+
+        <span class="footer-spacer"></span>
+
+        @if (isMine()) {
+          @if (p.status === 'OPEN') {
+            <button mat-stroked-button (click)="closePost()"><mat-icon>check</mat-icon> Mark fulfilled</button>
+          }
+        } @else if (!authService.isAdmin()) {
+          <button mat-stroked-button color="primary" [disabled]="messaging()" (click)="message()">
+            <mat-icon>chat</mat-icon> Message {{ p.poster.firstName }}
+          </button>
+        }
+        @if (authService.isAdmin()) {
+          <button mat-icon-button color="warn" matTooltip="Delete post (moderation)" (click)="deletePost()">
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
+      </footer>
+    </article>
+
+    <!-- Comments: readable by everyone -->
+    <section class="comments">
+      <h2 class="comments-title">{{ p.commentCount }} {{ p.commentCount === 1 ? 'comment' : 'comments' }}</h2>
+
+      @if (p.status === 'OPEN') {
+        @if (canParticipate()) {
+          <div class="comment-box">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Write a comment</mat-label>
+              <textarea matInput rows="2" [(ngModel)]="newComment" maxlength="1000"></textarea>
+            </mat-form-field>
+            <div class="comment-actions">
+              <button mat-raised-button color="primary" [disabled]="sending() || !newComment.trim()" (click)="submitComment()">
+                Comment
+              </button>
+            </div>
+          </div>
+        } @else if (!authService.isLoggedIn()) {
+          <div class="signin-prompt">
+            <a routerLink="/login">Sign in</a> or <a routerLink="/register">create an account</a> to join the conversation.
+          </div>
+        }
+      }
+
+      @if (threads().length === 0) {
+        <p class="no-comments">No comments yet — be the first to reply.</p>
+      }
+
+      @for (t of threads(); track trackByComment($index, t.comment)) {
+        <div class="comment">
+          <div class="avatar avatar--sm">{{ initials(t.comment.author.firstName, t.comment.author.lastName) }}</div>
+          <div class="comment-main">
+            <div class="comment-bubble">
+              <div class="comment-head">
+                <span class="comment-author">
+                  @if (t.comment.author.role === 'PROVIDER') {
+                    <a [routerLink]="['/providers', t.comment.author.id]">{{ t.comment.author.firstName }} {{ t.comment.author.lastName }}</a>
+                  } @else {
+                    {{ t.comment.author.firstName }} {{ t.comment.author.lastName }}
+                  }
+                  @if (t.comment.author.id === p.poster.id) { <span class="op-badge">Author</span> }
+                </span>
+                <span class="comment-time">{{ ago(t.comment.createdAt) }}</span>
+              </div>
+              <p class="comment-text">{{ t.comment.content }}</p>
+            </div>
+            <div class="comment-tools">
+              @if (canParticipate() && p.status === 'OPEN') {
+                <button type="button" class="link-btn" (click)="startReply(t.comment.commentId)">Reply</button>
+              }
+              @if (canDelete(t.comment)) {
+                <button type="button" class="link-btn link-btn--danger" (click)="deleteComment(t.comment)">Delete</button>
+              }
+            </div>
+
+            @for (r of t.replies; track trackByComment($index, r)) {
+              <div class="comment comment--reply">
+                <div class="avatar avatar--xs">{{ initials(r.author.firstName, r.author.lastName) }}</div>
+                <div class="comment-main">
+                  <div class="comment-bubble">
+                    <div class="comment-head">
+                      <span class="comment-author">
+                        {{ r.author.firstName }} {{ r.author.lastName }}
+                        @if (r.author.id === p.poster.id) { <span class="op-badge">Author</span> }
+                      </span>
+                      <span class="comment-time">{{ ago(r.createdAt) }}</span>
+                    </div>
+                    <p class="comment-text">{{ r.content }}</p>
+                  </div>
+                  <div class="comment-tools">
+                    @if (canParticipate() && p.status === 'OPEN') {
+                      <button type="button" class="link-btn" (click)="startReply(t.comment.commentId)">Reply</button>
+                    }
+                    @if (canDelete(r)) {
+                      <button type="button" class="link-btn link-btn--danger" (click)="deleteComment(r)">Delete</button>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (replyingTo() === t.comment.commentId) {
+              <div class="reply-box">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Reply to {{ t.comment.author.firstName }}</mat-label>
+                  <textarea matInput rows="2" [(ngModel)]="replyText" maxlength="1000"></textarea>
+                </mat-form-field>
+                <div class="comment-actions">
+                  <button mat-button (click)="startReply(t.comment.commentId)">Cancel</button>
+                  <button mat-raised-button color="primary" [disabled]="sending() || !replyText.trim()" (click)="submitReply(t.comment.commentId)">Reply</button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </section>
+  }
+</div>

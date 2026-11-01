@@ -1,32 +1,25 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './login/login';
-import { RegisterComponent } from './register/register';
-import { HomeComponent } from './home/home';
-import { SearchComponent } from './search/search';
-import { ProfileComponent } from './profile/profile';
-import { BookingComponent } from './booking/booking';
-import { AdminComponent } from './admin/admin';
-import { MyBookingsComponent } from './my-bookings/my-bookings';
-import { ReviewComponent } from './review/review';
-import { AvailabilityComponent } from './availability/availability';
 import { authGuard, roleGuard } from './guards/auth.guard';
-import { PaymentComponent } from './payments/payment';
-import { MessagesComponent } from './messages/messages';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
-  { path: 'home', component: HomeComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'payment/:bookingId', component: PaymentComponent, canActivate: [roleGuard('REQUESTER')] },
-  { path: 'register', component: RegisterComponent },
-  { path: 'search', component: SearchComponent },
-  { path: 'booking', component: BookingComponent, canActivate: [authGuard] },
-  { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
-  { path: 'my-bookings', component: MyBookingsComponent, canActivate: [roleGuard('REQUESTER', 'PROVIDER')] },
-  { path: 'requests', component: MyBookingsComponent, canActivate: [roleGuard('PROVIDER')], data: { requestsView: true } },
-  { path: 'review/:id', component: ReviewComponent, canActivate: [roleGuard('REQUESTER')] },
-  { path: 'availability', component: AvailabilityComponent, canActivate: [roleGuard('PROVIDER')] },
-  { path: 'admin', component: AdminComponent, canActivate: [roleGuard('ADMIN')] },
-  { path: 'messages', component: MessagesComponent, canActivate: [authGuard] },
+  { path: 'home', loadComponent: () => import('./home/home').then((m) => m.HomeComponent) },
+  { path: 'login', loadComponent: () => import('./login/login').then((m) => m.LoginComponent) },
+  { path: 'payment/:bookingId', loadComponent: () => import('./payments/payment').then((m) => m.PaymentComponent), canActivate: [roleGuard('REQUESTER', 'PROVIDER')] },
+  { path: 'wallet', loadComponent: () => import('./wallet/wallet').then((m) => m.WalletComponent), canActivate: [roleGuard('REQUESTER', 'PROVIDER')] },
+  { path: 'register', loadComponent: () => import('./register/register').then((m) => m.RegisterComponent) },
+  { path: 'search', loadComponent: () => import('./search/search').then((m) => m.SearchComponent) },
+  { path: 'board', loadComponent: () => import('./board/board').then((m) => m.BoardComponent) },
+  { path: 'board/:id', loadComponent: () => import('./board-post/board-post').then((m) => m.BoardPostComponent) },
+  { path: 'directory', loadComponent: () => import('./directory/directory').then((m) => m.DirectoryComponent) },
+  { path: 'providers/:id', loadComponent: () => import('./provider-profile/provider-profile').then((m) => m.ProviderProfileComponent) },
+  { path: 'booking', loadComponent: () => import('./booking/booking').then((m) => m.BookingComponent), canActivate: [authGuard] },
+  { path: 'profile', loadComponent: () => import('./profile/profile').then((m) => m.ProfileComponent), canActivate: [authGuard] },
+  { path: 'my-bookings', loadComponent: () => import('./my-bookings/my-bookings').then((m) => m.MyBookingsComponent), canActivate: [roleGuard('REQUESTER', 'PROVIDER')] },
+  { path: 'requests', loadComponent: () => import('./my-bookings/my-bookings').then((m) => m.MyBookingsComponent), canActivate: [roleGuard('PROVIDER')], data: { requestsView: true } },
+  { path: 'review/:id', loadComponent: () => import('./review/review').then((m) => m.ReviewComponent), canActivate: [roleGuard('REQUESTER')] },
+  { path: 'availability', loadComponent: () => import('./availability/availability').then((m) => m.AvailabilityComponent), canActivate: [roleGuard('PROVIDER')] },
+  { path: 'admin', loadComponent: () => import('./admin/admin').then((m) => m.AdminComponent), canActivate: [roleGuard('ADMIN')] },
+  { path: 'messages', loadComponent: () => import('./messages/messages').then((m) => m.MessagesComponent), canActivate: [authGuard] },
   { path: '**', redirectTo: 'home' },
 ];

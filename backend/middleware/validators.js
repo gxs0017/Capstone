@@ -1,6 +1,9 @@
 // middleware/validators.js
 // Declarative input validation for sensitive endpoints (express-validator).
 const { body, param, validationResult } = require('express-validator');
+const { POST_TYPES } = require('../utils/postTypes');
+const { addressProblem } = require('../utils/places');
+const { checkServiceName } = require('../utils/serviceNames');
 
 // Returns 400 with the first error message if validation failed.
 const handleValidation = (req, res, next) => {
@@ -24,6 +27,20 @@ const validateRegister = [
     body('address.city').trim().notEmpty().withMessage('City is required.'),
     body('address.province').trim().notEmpty().withMessage('Province is required.'),
     body('address.postalCode').trim().notEmpty().withMessage('Postal code is required.'),
+    // City, province and postal code must agree (a postal code's first letter fixes the province)
+    body('address').custom((address) => {
+        const problem = addressProblem(address || {});
+        if (problem) throw new Error(problem);
+        return true;
+    }),
+    body('address.lat').optional({ nullable: true }).isFloat({ min: 41, max: 84 }).withMessage('Invalid location.'),
+    body('address.lng').optional({ nullable: true }).isFloat({ min: -142, max: -52 }).withMessage('Invalid location.'),
+    body('services').optional({ nullable: true }).isArray({ max: 15 }).withMessage('Choose up to 15 services.'),
+    body('services.*').optional().custom((name) => {
+        const { error } = checkServiceName(name);
+        if (error) throw new Error(error);
+        return true;
+    }),
     handleValidation,
 ];
 
@@ -57,7 +74,12 @@ const validateBookingStatus = [
 ];
 
 const validateAddService = [
-    body('serviceName').trim().notEmpty().withMessage('serviceName is required.').isLength({ max: 100 }),
+    body('serviceName').trim().notEmpty().withMessage('serviceName is required.').isLength({ max: 100 })
+        .custom((name) => {
+            const { error } = checkServiceName(name);
+            if (error) throw new Error(error);
+            return true;
+        }),
     body('price').optional({ nullable: true }).isFloat({ min: 0, max: 100000 }).withMessage('Price must be a positive number.'),
     handleValidation,
 ];
@@ -101,8 +123,37 @@ const validateReviewMessage = [
     handleValidation,
 ];
 
+const validateCreateComment = [
+    param('id').isInt({ min: 1 }).withMessage('Invalid post id.'),
+    body('content').trim().notEmpty().withMessage('A comment cannot be empty.')
+        .isLength({ max: 1000 }).withMessage('Comments must be under 1000 characters.'),
+    body('parentId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('Invalid parent comment.'),
+    handleValidation,
+];
+
+const validateContactPrefs = [
+    body('showEmail').optional().isBoolean().withMessage('"showEmail" must be true or false.'),
+    body('showPhone').optional().isBoolean().withMessage('"showPhone" must be true or false.'),
+    handleValidation,
+];
+
+const validateDirectoryProfile = [
+    body('bio').optional({ nullable: true }).isString().isLength({ max: 300 }).withMessage('Bio must be 300 characters or fewer.'),
+    handleValidation,
+];
+
+const validateCreatePost = [
+    body('type').isIn(POST_TYPES).withMessage('Choose a valid post category.'),
+    body('title').trim().notEmpty().withMessage('A title is required.').isLength({ max: 150 }),
+    body('description').trim().notEmpty().withMessage('A description is required.').isLength({ max: 2000 }),
+    body('price').optional({ nullable: true }).isFloat({ min: 0, max: 100000 }).withMessage('Price must be a positive number.'),
+    body('city').optional({ nullable: true }).isString().isLength({ max: 50 }),
+    handleValidation,
+];
+
 module.exports = {
     validateRegister, validateLogin, validateCreateBooking, validateCreatePaymentIntent,
     validateBookingStatus, validateAddService, validateBlockUser, validateSetPrice,
     validateStartConversation, validateSendMessage, validatePinBooking, validateReviewMessage,
+    validateCreatePost, validateCreateComment, validateDirectoryProfile, validateContactPrefs,
 };
