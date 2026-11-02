@@ -1,5 +1,5 @@
 -- ============================================================
--- Neighbourhood Booking App — Database Schema
+-- Neighborhood Booking App — Database Schema
 -- Run this file FIRST to create the database and all tables.
 -- ============================================================
 
@@ -7,6 +7,8 @@ CREATE DATABASE IF NOT EXISTS bookingapp_db;
 USE bookingapp_db;
 
 -- Drop in reverse FK order so constraints don't block drops
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS payouts;
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS post_likes;
 DROP TABLE IF EXISTS post_comments;
@@ -160,6 +162,10 @@ CREATE TABLE bookings (
     cancelled_by       INT          DEFAULT NULL,
     cancelled_at       DATETIME     DEFAULT NULL,
     cancel_reason      VARCHAR(255) DEFAULT NULL,
+    completed_at       DATETIME     DEFAULT NULL,
+    auto_completed     BOOLEAN      NOT NULL DEFAULT FALSE,
+    issue_reported_at  DATETIME     DEFAULT NULL,
+    issue_note         VARCHAR(255) DEFAULT NULL,
     booking_date       DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (provider_detail_id) REFERENCES provider_details(provider_detail_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (requester_id)       REFERENCES users(user_id)                       ON DELETE CASCADE ON UPDATE CASCADE,
@@ -200,10 +206,11 @@ CREATE TABLE audit_logs (
     audit_id   INT AUTO_INCREMENT PRIMARY KEY,
     user_id    INT DEFAULT NULL,
     action     VARCHAR(50) NOT NULL,
-    details    VARCHAR(255) DEFAULT NULL,
+    details    VARCHAR(1000) DEFAULT NULL,
     ip_address VARCHAR(64) DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_audit_user (user_id),
+    INDEX idx_audit_action (action),
     INDEX idx_audit_created (created_at)
 );
 
@@ -226,6 +233,7 @@ CREATE TABLE conversations (
     booking_id          INT DEFAULT NULL,
     created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    read_only_for       INT DEFAULT NULL,   -- this participant can read but not reply (admin notices)
     FOREIGN KEY (participant_one_id) REFERENCES users(user_id)    ON DELETE CASCADE  ON UPDATE CASCADE,
     FOREIGN KEY (participant_two_id) REFERENCES users(user_id)    ON DELETE CASCADE  ON UPDATE CASCADE,
     FOREIGN KEY (booking_id)         REFERENCES bookings(booking_id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -285,7 +293,10 @@ CREATE TABLE posts (
     description TEXT NOT NULL,
     price       DECIMAL(8,2) DEFAULT NULL,
     city        VARCHAR(50) DEFAULT NULL,
-    status      ENUM('OPEN','CLOSED') NOT NULL DEFAULT 'OPEN',
+    status      ENUM('OPEN','CLOSED','ARCHIVED','REMOVED') NOT NULL DEFAULT 'OPEN',
+    moderation_reason VARCHAR(255) DEFAULT NULL,
+    moderated_by INT DEFAULT NULL,
+    moderated_at DATETIME DEFAULT NULL,
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -342,10 +353,38 @@ CREATE TABLE payments (
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     released_at     DATETIME DEFAULT NULL,
     refunded_at     DATETIME DEFAULT NULL,
+    available_at    DATETIME DEFAULT NULL,   -- released_at + 7 days: when the provider may withdraw
+    payout_id       INT DEFAULT NULL,        -- set once withdrawn
     UNIQUE KEY uniq_payment_booking (booking_id),
     FOREIGN KEY (booking_id)  REFERENCES bookings(booking_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (payer_id)    REFERENCES users(user_id)       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (provider_id) REFERENCES users(user_id)       ON DELETE CASCADE ON UPDATE CASCADE,
     INDEX idx_payments_provider (provider_id, status),
     INDEX idx_payments_payer (payer_id)
+);
+
+
+CREATE TABLE notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id    INT NOT NULL,
+    type       VARCHAR(40)  NOT NULL,
+    title      VARCHAR(120) NOT NULL,
+    body       VARCHAR(500) DEFAULT NULL,
+    link       VARCHAR(120) DEFAULT NULL,
+    is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_notifications_user (user_id, is_read, created_at)
+);
+
+CREATE TABLE payouts (
+    payout_id    INT AUTO_INCREMENT PRIMARY KEY,
+    provider_id  INT NOT NULL,
+    amount       DECIMAL(10,2) NOT NULL,
+    currency     CHAR(3) NOT NULL DEFAULT 'CAD',
+    status       ENUM('REQUESTED','PAID','FAILED') NOT NULL DEFAULT 'REQUESTED',
+    requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    paid_at      DATETIME DEFAULT NULL,
+    FOREIGN KEY (provider_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_payouts_provider (provider_id, status)
 );

@@ -47,11 +47,22 @@ export interface DashboardStats {
   pendingBookings: number;
   blockedUsers: number;
   totalServices: number;
+  confirmedBookings?: number;
+  openIssues?: number;
+  activePosts?: number;
+  flaggedMessages?: number;
+  heldAmount?: number;
+  pendingPayouts?: number;
+  actionsToday?: number;
+  onlineNow?: number;
 }
 
 export interface AuditLogEntry {
   audit_id: number;
   user_id: number | null;
+  user_name?: string | null;
+  user_email?: string | null;
+  user_role?: string | null;
   action: string;
   details: string | null;
   ip_address: string | null;
@@ -117,8 +128,32 @@ export class AdminService {
     return this.http.get<DashboardStats>(`${this.API}/stats`);
   }
 
-  getAuditLogs(limit = 100): Observable<AuditLogEntry[]> {
-    return this.http.get<AuditLogEntry[]>(`${this.API}/audit-logs`, { params: { limit: String(limit) } });
+  getAuditLogs(filters: AuditFilters = {}, limit = 200): Observable<AuditLogEntry[]> {
+    let params = new HttpParams().set('limit', String(limit));
+    (Object.keys(filters) as (keyof AuditFilters)[]).forEach((k) => {
+      if (filters[k]) params = params.set(k, String(filters[k]));
+    });
+    return this.http.get<AuditLogEntry[]>(`${this.API}/audit-logs`, { params });
+  }
+
+  getAdminPosts(opts: { status?: string; search?: string; type?: string }, page = 1, limit = 12): Observable<AdminPostPage> {
+    let params = new HttpParams().set('page', String(page)).set('limit', String(limit));
+    if (opts.status) params = params.set('status', opts.status);
+    if (opts.search) params = params.set('search', opts.search);
+    if (opts.type) params = params.set('type', opts.type);
+    return this.http.get<AdminPostPage>(`${this.API}/posts`, { params });
+  }
+
+  moderatePost(postId: number, action: 'ARCHIVE' | 'REMOVE' | 'RESTORE', reason?: string): Observable<unknown> {
+    return this.http.patch(`${this.API}/posts/${postId}/moderate`, { action, reason });
+  }
+
+  resolveIssue(bookingId: number, note?: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API}/bookings/${bookingId}/resolve-issue`, { note });
+  }
+
+  markPayoutPaid(payoutId: number): Observable<{ message: string }> {
+    return this.http.patch<{ message: string }>(`${this.API}/payouts/${payoutId}/paid`, {});
   }
 
   getFlaggedMessages(): Observable<FlaggedMessage[]> {
@@ -162,4 +197,45 @@ export interface AdminPaymentsOverview {
   currency: string;
   totals: Record<string, { count: number; gross: number; fees: number }>;
   entries: AdminPaymentEntry[];
+  payouts?: AdminPayoutEntry[];
+}
+
+export interface AuditFilters {
+  user?: string;
+  action?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface AdminPost {
+  postId: number;
+  type: string;
+  title: string;
+  description: string;
+  status: 'OPEN' | 'CLOSED' | 'ARCHIVED' | 'REMOVED';
+  moderationReason: string | null;
+  createdAt: string;
+  likeCount: number;
+  commentCount: number;
+  city: string | null;
+  poster: { id: number; firstName: string; lastName: string; role: string };
+}
+
+export interface AdminPostPage {
+  data: AdminPost[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface AdminPayoutEntry {
+  payoutId: number;
+  amount: number;
+  currency: string;
+  status: 'REQUESTED' | 'PAID' | 'FAILED';
+  requestedAt: string;
+  paidAt: string | null;
+  provider?: { id: number; name: string; email: string };
 }

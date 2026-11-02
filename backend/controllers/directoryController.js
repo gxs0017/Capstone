@@ -1,8 +1,8 @@
 // controllers/directoryController.js
 // The neighbourhood directory ("yellow pages") and the "Recommended near you"
 // list. Both list SERVICE PROVIDERS only — requesters are never listed, and no
-// entry ever carries an email, phone number or street address (contact
-// details live behind the provider's own privacy switches on their storefront).
+// entry ever carries a street address. An email / phone number appears only when
+// that provider switched it on in their own privacy settings.
 
 const pool = require('../config/db');
 const { toDirectoryDTOList } = require('../mappers/directoryMapper');
@@ -45,19 +45,32 @@ const BASE_WHERE = [
 
 const SELECT_COLUMNS = `
     u.user_id AS id, u.first_name, u.last_name, u.role, u.city, u.province, u.bio, u.created_at,
+    u.email, u.phone_number, u.show_email, u.show_phone,
     nb.name AS neighbourhood,
+    (SELECT MIN(COALESCE(dp.price, sp.base_price)) FROM provider_details dp JOIN services sp ON sp.service_id = dp.service_id
+      WHERE dp.user_id = u.user_id) AS minPrice,
     (SELECT ROUND(AVG(rv.rating), 1) FROM reviews rv WHERE rv.provider_id = u.user_id) AS avgRating,
     (SELECT COUNT(*) FROM reviews rv WHERE rv.provider_id = u.user_id) AS reviewCount,
     (SELECT COUNT(*) FROM bookings b JOIN provider_details pd2 ON pd2.provider_detail_id = b.provider_detail_id
       WHERE pd2.user_id = u.user_id AND b.status = 'COMPLETED') AS completedJobs,
-    (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', s.service_name, 'price', COALESCE(d.price, s.base_price)))
+    (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', s.service_id, 'name', s.service_name, 'price', COALESCE(d.price, s.base_price)))
        FROM provider_details d JOIN services s ON s.service_id = d.service_id
       WHERE d.user_id = u.user_id) AS services`;
 
+// Sort choices (whitelisted — never interpolated from the client)
+const SORTS = {
+    nearest: 'proximity ASC, (avgRating IS NULL) ASC, avgRating DESC, u.first_name ASC, u.user_id ASC',
+    rating:  '(avgRating IS NULL) ASC, avgRating DESC, reviewCount DESC, u.user_id ASC',
+    jobs:    'completedJobs DESC, (avgRating IS NULL) ASC, avgRating DESC, u.user_id ASC',
+    price:   '(minPrice IS NULL) ASC, minPrice ASC, u.user_id ASC',
+    name:    'u.first_name ASC, u.last_name ASC, u.user_id ASC',
+    newest:  'u.created_at DESC, u.user_id DESC',
+};
+
 // ----------------------------------------------------------------
-// GET /directory?search=&service=&city=&page=&limit=
-// Ranking: same neighbourhood, then same city, then same province, then the
-// rest; within a tier, best-rated first.
+// GET /directory?search=&service=&city=&neighbourhood=&minRating=&maxPrice=&sort=&page=&limit=
+// Default ranking ("nearest"): same neighbourhood, then same city, then same
+// province, then the rest; within a tier, best-rated first.
 // ----------------------------------------------------------------
 const getDirectory = async (req, res) => {
     try {
@@ -73,6 +86,21 @@ const getDirectory = async (req, res) => {
         if (req.user) {
             where.push('u.user_id <> ?');
             whereParams.push(req.user.id);
+        }
+        const cityFilter = (req.query.cityFilter || '').trim();
+        if (cityFilter) { where.push('u.city LIKE ?'); whereParams.push(`%${cityFilter}%`); }
+        const areaFilter = (req.query.neighbourhood || '').trim();
+        if (areaFilter) { where.push('nb.name LIKE ?'); whereParams.push(`%${areaFilter}%`); }
+        const minRating = Number(req.query.minRating);
+        if (minRating > 0) {
+            where.push('(SELECT AVG(rr.rating) FROM reviews rr WHERE rr.provider_id = u.user_id) >= ?');
+            whereParams.push(Math.min(5, minRating));
+        }
+        const maxPrice = Number(req.query.maxPrice);
+        if (maxPrice > 0) {
+            where.push(`EXISTS (SELECT 1 FROM provider_details dm JOIN services sm ON sm.service_id = dm.service_id
+                                WHERE dm.user_id = u.user_id AND COALESCE(dm.price, sm.base_price) <= ?)`);
+            whereParams.push(maxPrice);
         }
         if (search) {
             where.push(`(u.first_name LIKE ? OR u.last_name LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?
@@ -95,7 +123,7 @@ const getDirectory = async (req, res) => {
         const [rows] = await pool.execute(
             `SELECT ${SELECT_COLUMNS}, ${PROXIMITY_SQL} AS proximity
              ${from} ${whereSql}
-             ORDER BY proximity ASC, (avgRating IS NULL) ASC, avgRating DESC, u.first_name ASC, u.user_id ASC
+             ORDER BY ${SORTS[req.query.sort] || SORTS.nearest}
              LIMIT ${limit} OFFSET ${offset}`,
             [...proximityParams(place), ...whereParams]
         );

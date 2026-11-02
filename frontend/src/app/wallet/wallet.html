@@ -1,7 +1,13 @@
 <div class="wallet-page">
   <div class="wallet-header">
     <h1>{{ isProvider() ? 'Payments & earnings' : 'My payments' }}</h1>
-    <p>Online payments are held securely until the job is confirmed done. Pay-on-arrival jobs aren't listed here.</p>
+    <p>
+      @if (isProvider()) {
+        You are paid the same day the job is done and no issue was raised. Earnings can be withdrawn {{ data()?.holdDays ?? 7 }} days after they are credited.
+      } @else {
+        Your payment is held safely by NeighborBook. Once the session has happened and no issue is raised, it goes to the provider. Pay-on-arrival jobs aren't listed here.
+      }
+    </p>
   </div>
 
   @if (isProvider()) {
@@ -20,17 +26,57 @@
   } @else if (error()) {
     <div class="state-center"><p>{{ error() }}</p></div>
   } @else {
-    @if (totals(); as t) {
-      <div class="totals-grid">
+    @if (tab() === 'earned' && data(); as d) {
+      <div class="totals-grid totals-grid--4">
         <div class="total-card">
-          <span class="total-label">{{ tab() === 'earned' ? 'Pending' : 'Held' }}</span>
-          <span class="total-value">{{ t.HELD | currency }}</span>
-          <span class="total-sub">{{ tab() === 'earned' ? 'waiting for jobs to be completed' : 'until the job is done' }}</span>
+          <span class="total-label">In escrow</span>
+          <span class="total-value">{{ d.balance.held | currency }}</span>
+          <span class="total-sub">paid, waiting for the job</span>
+        </div>
+        <div class="total-card">
+          <span class="total-label">Clearing</span>
+          <span class="total-value">{{ d.balance.pending | currency }}</span>
+          <span class="total-sub">
+            @if (d.balance.nextAvailableAt) { next withdrawable {{ d.balance.nextAvailableAt | date:'MMM d' }} } @else { {{ d.holdDays }}-day hold after credit }
+          </span>
         </div>
         <div class="total-card total-card--good">
-          <span class="total-label">{{ tab() === 'earned' ? 'Earned' : 'Paid out' }}</span>
+          <span class="total-label">Available to withdraw</span>
+          <span class="total-value">{{ d.balance.available | currency }}</span>
+          <button mat-flat-button color="primary" class="withdraw-btn" [disabled]="d.balance.available <= 0 || withdrawing()" (click)="withdraw()">
+            <mat-icon>account_balance</mat-icon> Withdraw
+          </button>
+        </div>
+        <div class="total-card">
+          <span class="total-label">Withdrawn</span>
+          <span class="total-value">{{ d.balance.withdrawn | currency }}</span>
+          <span class="total-sub">requested payouts</span>
+        </div>
+      </div>
+
+      @if (d.payouts.length > 0) {
+        <div class="payouts">
+          <h3>Withdrawals</h3>
+          @for (p of d.payouts; track p.payoutId) {
+            <div class="payout-row">
+              <span>{{ p.requestedAt | date:'MMM d, y' }}</span>
+              <strong>{{ p.amount | currency }}</strong>
+              <span class="status-chip" [ngClass]="p.status === 'PAID' ? 'chip-released' : 'chip-held'">{{ p.status === 'PAID' ? 'Sent' : 'Processing' }}</span>
+            </div>
+          }
+        </div>
+      }
+    } @else if (totals(); as t) {
+      <div class="totals-grid">
+        <div class="total-card">
+          <span class="total-label">Held</span>
+          <span class="total-value">{{ t.HELD | currency }}</span>
+          <span class="total-sub">until the job is done</span>
+        </div>
+        <div class="total-card total-card--good">
+          <span class="total-label">Paid to providers</span>
           <span class="total-value">{{ t.RELEASED | currency }}</span>
-          <span class="total-sub">{{ tab() === 'earned' ? 'completed jobs' : 'to providers' }}</span>
+          <span class="total-sub">completed jobs</span>
         </div>
         <div class="total-card">
           <span class="total-label">Refunded</span>
@@ -38,13 +84,6 @@
           <span class="total-sub">cancelled or declined</span>
         </div>
       </div>
-    }
-
-    @if (tab() === 'earned') {
-      <p class="wallet-note">
-        <mat-icon>info</mat-icon>
-        <span>Earnings are tracked here as soon as a job is completed. Automatic payouts to your bank account aren't connected yet.</span>
-      </p>
     }
 
     @if (entries().length === 0) {
@@ -56,7 +95,7 @@
     } @else {
       <div class="entries">
         @for (e of entries(); track trackByPayment($index, e)) {
-          <div class="entry">
+          <div class="entry" [class.entry--refunded]="e.status === 'REFUNDED'">
             <div class="entry-main">
               <span class="entry-title">{{ e.service }} <span class="entry-who">{{ counterparty(e) }}</span></span>
               <span class="entry-sub">
@@ -70,7 +109,7 @@
               @if (tab() === 'earned' && e.platformFee > 0) {
                 <span class="entry-fee">after {{ e.platformFee | currency }} platform fee</span>
               }
-              <span class="status-chip" [ngClass]="statusClass(e.status)">{{ statusLabel(e.status) }}</span>
+              <span class="status-chip" [ngClass]="statusClass(e.status)">{{ tab() === 'earned' ? earnedStage(e) : statusLabel(e.status) }}</span>
             </div>
           </div>
         }

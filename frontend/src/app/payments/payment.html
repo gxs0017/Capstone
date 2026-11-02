@@ -67,15 +67,35 @@
               Cancelled or declined? You're refunded.</span>
           </p>
 
-          @if (s.methods.paypal && s.methods.stripe) {
+          @if ((s.methods.paypal ? 1 : 0) + (s.methods.stripe ? 1 : 0) + (s.methods.demo ? 1 : 0) > 1) {
             <div class="method-tabs">
-              <button mat-stroked-button [class.tab-active]="method() === 'paypal'" (click)="choose('paypal')">
-                <mat-icon>account_balance_wallet</mat-icon> PayPal
-              </button>
-              <button mat-stroked-button [class.tab-active]="method() === 'card'" (click)="choose('card')">
-                <mat-icon>credit_card</mat-icon> Card
-              </button>
+              @if (s.methods.paypal) {
+                <button mat-stroked-button [class.tab-active]="method() === 'paypal'" (click)="choose('paypal')">
+                  <mat-icon>account_balance_wallet</mat-icon> PayPal
+                </button>
+              }
+              @if (s.methods.stripe) {
+                <button mat-stroked-button [class.tab-active]="method() === 'card'" (click)="choose('card')">
+                  <mat-icon>credit_card</mat-icon> Card
+                </button>
+              }
+              @if (s.methods.demo) {
+                <button mat-stroked-button [class.tab-active]="method() === 'demo'" (click)="choose('demo')">
+                  <mat-icon>science</mat-icon> Demo card
+                </button>
+              }
             </div>
+          }
+
+          @if (method() === 'demo') {
+            @if (paypalError()) { <div class="error-message">{{ paypalError() }}</div> }
+            <p class="escrow-note">
+              <mat-icon>science</mat-icon>
+              <span>Demo mode: no real card is charged. The payment is recorded and held exactly like a real one, so you can try the whole flow.</span>
+            </p>
+            <button mat-flat-button color="primary" [disabled]="demoPaying()" (click)="payDemo()">
+              <mat-icon>credit_card</mat-icon> Pay {{ s.total | currency:s.currency }} with the demo card
+            </button>
           }
 
           @if (method() === 'paypal') {

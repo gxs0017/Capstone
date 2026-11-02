@@ -10,6 +10,8 @@ const { globalLimiter } = require('./middleware/rateLimit');
 const { startExpiryJob } = require('./utils/bookingExpiry');
 const { startSweeper } = require('./utils/neighbourhoods');
 const { initSocket } = require('./config/socket');
+const { startAdminLive } = require('./utils/adminLive');
+const { startPayoutJobs } = require('./utils/payoutJobs');
 
 const app  = express();
 app.set('trust proxy', 1); // trust host proxy (Render) so rate limiting sees real client IPs
@@ -30,7 +32,7 @@ app.use('/api', globalLimiter);
 app.use('/api/auth', Routes);
 
 app.get('/', (req, res) => {
-    res.send('Neighbourhood Booking App — API running');
+    res.send('Neighborhood Booking App — API running');
 });
 
 // Test MySQL connection on startup, then start listening
@@ -41,6 +43,8 @@ pool.getConnection()
         initSocket(server);
         server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
         startExpiryJob();
+        startPayoutJobs();
+        startAdminLive();
         if (process.env.NEIGHBOURHOOD_SWEEP !== 'off') startSweeper();
     })
     .catch(err => {

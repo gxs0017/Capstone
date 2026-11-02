@@ -15,7 +15,7 @@ export interface PaymentSummary {
   service: string;
   provider: { id: number; name: string };
   scheduledDates: string[];
-  methods: { paypal: boolean; stripe: boolean };
+  methods: { paypal: boolean; stripe: boolean; demo?: boolean };
 }
 
 export interface PaymentEntry {
@@ -33,6 +33,8 @@ export interface PaymentEntry {
   createdAt: string;
   releasedAt: string | null;
   refundedAt: string | null;
+  availableAt?: string | null;
+  payoutId?: number | null;
   payer: { id: number; name: string };
   provider: { id: number; name: string };
   refundError?: string | null;
@@ -40,8 +42,28 @@ export interface PaymentEntry {
 
 export type LedgerTotals = Record<LedgerStatus, number>;
 
+export interface ProviderBalance {
+  held: number;
+  pending: number;
+  available: number;
+  withdrawn: number;
+  nextAvailableAt: string | null;
+}
+
+export interface Payout {
+  payoutId: number;
+  amount: number;
+  currency: string;
+  status: 'REQUESTED' | 'PAID' | 'FAILED';
+  requestedAt: string;
+  paidAt: string | null;
+}
+
 export interface MyPayments {
   currency: string;
+  holdDays: number;
+  balance: ProviderBalance;
+  payouts: Payout[];
   paid:   { totals: LedgerTotals; entries: PaymentEntry[] };
   earned: { totals: LedgerTotals; entries: PaymentEntry[] };
 }
@@ -55,8 +77,8 @@ export class PaymentService {
   constructor(private http: HttpClient) {}
 
   /** Which online payment methods are switched on (so the UI never offers a dead option). */
-  getMethods(): Observable<{ paypal: boolean; stripe: boolean; currency: string }> {
-    return this.http.get<{ paypal: boolean; stripe: boolean; currency: string }>(`${this.API}/methods`);
+  getMethods(): Observable<{ paypal: boolean; stripe: boolean; demo?: boolean; currency: string }> {
+    return this.http.get<{ paypal: boolean; stripe: boolean; demo?: boolean; currency: string }>(`${this.API}/methods`);
   }
 
   getSummary(bookingId: number): Observable<PaymentSummary> {
@@ -65,6 +87,15 @@ export class PaymentService {
 
   getMine(): Observable<MyPayments> {
     return this.http.get<MyPayments>(`${this.API}/mine`);
+  }
+
+  /** Demo card: records the payment with no real charge (only when the server has it switched on). */
+  payDemo(bookingId: number): Observable<{ message: string; paymentStatus: string }> {
+    return this.http.post<{ message: string; paymentStatus: string }>(`${this.API}/demo-pay`, { bookingId });
+  }
+
+  withdraw(): Observable<{ message: string; amount: number }> {
+    return this.http.post<{ message: string; amount: number }>(`${this.API}/withdraw`, {});
   }
 
   getConfig() {

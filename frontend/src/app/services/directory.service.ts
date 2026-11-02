@@ -18,7 +18,24 @@ export interface DirectoryEntry {
   avgRating: number | null;
   reviewCount: number;
   completedJobs: number;
-  services: { name: string; price: number }[];
+  /** Only present when the provider chose to show them. */
+  email?: string | null;
+  phoneNumber?: string | null;
+  minPrice?: number | null;
+  services: { id: number; name: string; price: number }[];
+}
+
+export type DirectorySort = 'nearest' | 'rating' | 'jobs' | 'price' | 'name' | 'newest';
+
+export interface DirectoryFilters {
+  search?: string;
+  service?: string;
+  /** Advanced filters */
+  cityFilter?: string;
+  neighbourhood?: string;
+  minRating?: number;
+  maxPrice?: number;
+  sort?: DirectorySort;
 }
 
 export interface DirectoryPage {
@@ -42,11 +59,15 @@ export class DirectoryService {
   constructor(private http: HttpClient) {}
 
   /** Nearby service providers, nearest first. */
-  getDirectory(opts: { search?: string; service?: string; city?: string }, page = 1, limit = 12): Observable<DirectoryPage> {
+  getDirectory(opts: DirectoryFilters, page = 1, limit = 12): Observable<DirectoryPage> {
     let params = new HttpParams().set('page', String(page)).set('limit', String(limit));
     if (opts.search) params = params.set('search', opts.search);
     if (opts.service) params = params.set('service', opts.service);
-    if (opts.city) params = params.set('city', opts.city);
+    if (opts.cityFilter) params = params.set('cityFilter', opts.cityFilter);
+    if (opts.neighbourhood) params = params.set('neighbourhood', opts.neighbourhood);
+    if (opts.minRating) params = params.set('minRating', String(opts.minRating));
+    if (opts.maxPrice) params = params.set('maxPrice', String(opts.maxPrice));
+    if (opts.sort && opts.sort !== 'nearest') params = params.set('sort', opts.sort);
     return this.http.get<DirectoryPage>(this.API, { params });
   }
 

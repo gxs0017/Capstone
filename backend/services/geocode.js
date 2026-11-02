@@ -8,7 +8,7 @@
 const { fsaOf, inCanada, normalizePostal, tidyCity, PROVINCE_CODES } = require('../utils/places');
 
 const BASE = process.env.GEOCODER_URL || 'https://nominatim.openstreetmap.org';
-const USER_AGENT = process.env.GEOCODER_USER_AGENT || 'NeighbourBook-capstone/1.0 (student project)';
+const USER_AGENT = process.env.GEOCODER_USER_AGENT || 'NeighborBook-capstone/1.0 (student project)';
 const MIN_GAP_MS = 1100;
 const CACHE_MS = 24 * 60 * 60 * 1000;
 
@@ -41,7 +41,7 @@ const request = (params) => {
     });
 };
 
-// One Nominatim hit -> the address fields NeighbourBook stores.
+// One Nominatim hit -> the address fields NeighborBook stores.
 const toPlace = (hit) => {
     const a = hit.address || {};
     const province = String(a['ISO3166-2-lvl4'] || '').replace('CA-', '').toUpperCase();

@@ -56,6 +56,34 @@
             }
           </div>
 
+          <!-- Requester: start offering services -->
+          @if (user?.role === 'REQUESTER') {
+            <mat-divider class="divider"></mat-divider>
+            <div class="directory-section">
+              <h3>
+                <mat-icon class="section-icon">storefront</mat-icon>
+                Want to earn too? Become a provider
+              </h3>
+              <p class="directory-hint">
+                List what you can do for your neighbors. You keep booking other providers exactly as you do now,
+                and you also get a storefront, incoming requests and earnings.
+              </p>
+              <div class="add-service-row">
+                <mat-form-field appearance="outline" class="add-service-field">
+                  <mat-label>Services you can offer</mat-label>
+                  <input matInput [formControl]="servicesToOffer" maxlength="200"
+                         placeholder="e.g. Dog walking, Piano lessons" (keydown.enter)="becomeProvider()" />
+                  <mat-hint>Separate several with commas</mat-hint>
+                </mat-form-field>
+                <button mat-raised-button color="primary" (click)="becomeProvider()"
+                        [disabled]="!servicesToOffer.value.trim() || upgrading()">
+                  <mat-icon>rocket_launch</mat-icon> Start offering services
+                </button>
+              </div>
+              @if (upgradeMessage()) { <p class="service-message">{{ upgradeMessage() }}</p> }
+            </div>
+          }
+
           <!-- Provider: Manage Services -->
           @if (user?.role === 'PROVIDER') {
             <mat-divider class="divider"></mat-divider>
@@ -127,7 +155,7 @@
               </h3>
               <p class="directory-hint">
                 People find you in Browse Services and the Directory, and on your
-                <a [routerLink]="['/providers', user?.id]">storefront page</a>. Add a short bio so neighbours know who you are.
+                <a [routerLink]="['/providers', user?.id]">storefront page</a>. Add a short bio so neighbors know who you are.
               </p>
 
               <mat-form-field appearance="outline" class="bio-field">
@@ -153,7 +181,7 @@
               </h3>
               <p class="directory-hint">
                 Both are hidden by default. Customers can always reach you through <strong>Message</strong> and
-                <strong>Book</strong>, which keep the conversation and payment inside NeighbourBook.
+                <strong>Book</strong>, which keep the conversation and payment inside NeighborBook.
               </p>
               <div class="privacy-toggles">
                 <mat-slide-toggle [checked]="!!user?.showEmail" (change)="setContactPref('showEmail', $event.checked)">
@@ -169,6 +197,12 @@
 
           <mat-divider class="divider"></mat-divider>
 
+            @if (user?.role === 'PROVIDER') {
+              <p class="directory-hint">
+                Need a hand yourself? You can book other neighbors from the <a routerLink="/directory">Directory</a>.
+                Jobs you book appear under <strong>My Bookings</strong>; jobs people book with you are under <strong>Incoming Requests</strong>.
+              </p>
+            }
           <div class="actions">
             @if (user?.role === 'REQUESTER' || user?.role === 'PROVIDER') {
               <a mat-stroked-button routerLink="/my-bookings">

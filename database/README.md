@@ -12,3 +12,9 @@ JWT_EXPIRES_IN=7d
 # Server
 PORT=5000
 
+
+## Scripts
+
+- `TableSchema.sql` — the full, current schema (use this for a fresh database).
+- `MockData.sql` — sample data.
+- `import-neighbourhoods.js` — refreshes the neighbourhood list from OpenStreetMap: `cd database && node import-neighbourhoods.js`.

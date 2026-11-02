@@ -23,16 +23,28 @@ export class ChatSocketService {
   private newMessage$ = new Subject<ChatMessage>();
   private events$ = new Subject<{ event: string; payload: any }>();
   private watchedPosts = new Set<number>();
+  private socketToken: string | null = null;
+  private hasConnected = false;
 
+  /**
+   * Opens the app's one socket. Signed-in users get their private channels (chat,
+   * bookings, notifications; admins also get the live logs). Visitors who aren't
+   * signed in connect as guests and still receive the public live data
+   * (directory, board). If the sign-in state changed since the socket was
+   * opened, it is replaced so the right channels are joined.
+   */
   connect(): void {
-    // Already connected, or in the middle of (re)connecting — never open a second socket
-    if (this.socket?.active) return;
+    const token = this.authService.getToken() ?? null;
 
-    const token = this.authService.getToken();
-    if (!token) return;
+    // Already connected (or reconnecting) as the same person — never open a second socket
+    if (this.socket?.active && this.socketToken === token) return;
+
+    this.socket?.disconnect();
+    this.socketToken = token;
+    this.hasConnected = false;
 
     this.socket = io(SOCKET_URL, {
-      auth: { token },
+      auth: token ? { token } : {},
       transports: ['websocket', 'polling'],
       autoConnect: true,
     });
@@ -43,12 +55,18 @@ export class ChatSocketService {
       if (event !== 'message:new') this.events$.next({ event, payload });
     });
     // After a reconnect the server forgets post rooms; re-join the ones still open
-    this.socket.on('connect', () => this.watchedPosts.forEach((id) => this.socket?.emit('post:join', id)));
+    this.socket.on('connect', () => {
+      this.watchedPosts.forEach((id) => this.socket?.emit('post:join', id));
+      // After a dropped connection anything could have changed meanwhile: tell the pages to refetch
+      if (this.hasConnected) this.events$.next({ event: 'socket:reconnected', payload: null });
+      this.hasConnected = true;
+    });
   }
 
   disconnect(): void {
     this.socket?.disconnect();
     this.socket = null;
+    this.socketToken = null;
     this.watchedPosts.clear();
   }
 

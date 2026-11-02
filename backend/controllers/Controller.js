@@ -10,6 +10,8 @@ const { logAction } = require('../models/AuditLog');
 const { normalizePostal, tidyCity, inCanada } = require('../utils/places');
 const { checkServiceName } = require('../utils/serviceNames');
 const { refreshUserInBackground } = require('../utils/neighbourhoods');
+const { notify } = require('../utils/notify');
+const { emitToPublic } = require('../config/socket');
 
 // ----------------------------------------------------------------
 // POST /api/auth/register
@@ -84,7 +86,12 @@ const registerUser = async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
         );
 
-        logAction(newUserId, 'REGISTER', 'role: ' + role, req.ip);
+        logAction(newUserId, 'REGISTER', `role: ${role}, name: ${firstName} ${lastName}, email: ${email}, city: ${city}${savedServices.length ? ', services: ' + savedServices.join(', ') : ''}`, req.ip);
+        notify(newUserId, { type: 'WELCOME', title: 'Welcome to NeighborBook', body: role === 'PROVIDER' ? 'Your profile is set up. Add a short bio so neighbors can get to know you.' : 'Find a trusted neighbor for your next job.', link: role === 'PROVIDER' ? '/profile' : '/directory' });
+        if (savedServices.length) {
+            notify(newUserId, { type: 'SERVICE_LIVE', title: 'Your services are live', body: `${savedServices.join(', ')} ${savedServices.length === 1 ? 'is' : 'are'} now listed in the directory.`, link: `/providers/${newUserId}` });
+        }
+        if (role === 'PROVIDER') emitToPublic('directory:changed', { providerId: newUserId, change: 'new-provider' });
 
         return res.status(201).json({
             message: 'User registered successfully!',
@@ -250,6 +257,7 @@ const updateDirectoryProfile = async (req, res) => {
             return res.status(400).json({ message: 'Nothing to update.' });
         }
 
+        emitToPublic('directory:changed', { providerId: req.user.id, change: 'bio' });
         const user = await User.findById(req.user.id);
         const services = user.role === 'PROVIDER' ? await User.getServicesByUserId(user.user_id) : [];
         return res.json(toRoleBasedProfile(user, services));
@@ -273,6 +281,7 @@ const updateContactPrefs = async (req, res) => {
         if (!changed) {
             return res.status(400).json({ message: 'Nothing to update.' });
         }
+        emitToPublic('directory:changed', { providerId: req.user.id, change: 'contact' });
         const user = await User.findById(req.user.id);
         const services = await User.getServicesByUserId(user.user_id);
         return res.json(toRoleBasedProfile(user, services));

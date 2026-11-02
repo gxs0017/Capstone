@@ -1,22 +1,22 @@
 <!-- Hero Section -->
 <section class="hero">
   <div class="hero-content">
-    <h1 class="hero-title">Your Neighbourhood,<br>Your Community</h1>
+    <h1 class="hero-title">Your Neighborhood,<br>Your Community</h1>
     <p class="hero-subtitle">
-      NeighbourBook connects locals to nearby service providers, emphasising a strong sense of community
+      NeighborBook connects locals to nearby service providers, emphasizing a strong sense of community
       by supporting those who you live alongside. Through simple search and booking, users find services
       that fit their needs while providers get an all-in-one platform to manage and grow their business.
-      We aim to build strong, trustworthy relationships through services provided by your very own neighbours.
+      We aim to build strong, trustworthy relationships through services provided by your very own neighbors.
     </p>
     <div class="hero-actions">
-      <a mat-raised-button color="primary" routerLink="/search">Browse Services</a>
+      <a mat-raised-button color="primary" routerLink="/search">Browse the Directory</a>
       @if (!authService.isLoggedIn()) {
         <a mat-stroked-button routerLink="/register">Become a Provider</a>
       }
     </div>
   </div>
   <div class="hero-graphic">
-    <mat-icon class="hero-icon">home</mat-icon>
+    <img class="hero-logo" src="neighborbook-logo.png" alt="NeighborBook logo" width="320" height="320" />
   </div>
 </section>
 
@@ -28,7 +28,7 @@
       <div class="step-number">1</div>
       <mat-icon class="step-icon">search</mat-icon>
       <h3>Browse</h3>
-      <p>Search for services available in your neighbourhood.</p>
+      <p>Search for services available in your neighborhood.</p>
     </div>
     <div class="step-card">
       <div class="step-number">2</div>
@@ -40,7 +40,7 @@
       <div class="step-number">3</div>
       <mat-icon class="step-icon">handshake</mat-icon>
       <h3>Connect</h3>
-      <p>Meet your neighbour and enjoy the service with peace of mind.</p>
+      <p>Meet your neighbor and enjoy the service with peace of mind.</p>
     </div>
   </div>
 </section>
@@ -64,7 +64,7 @@
 @if (!authService.isLoggedIn()) {
   <section class="cta-section">
     <h2>Ready to get started?</h2>
-    <p>Join NeighbourBook today — it's free to sign up.</p>
+    <p>Join NeighborBook today — it's free to sign up.</p>
     <div class="cta-actions">
       <a mat-raised-button color="primary" routerLink="/register">Create an Account</a>
       <a mat-button routerLink="/login">Already have one? Sign In</a>

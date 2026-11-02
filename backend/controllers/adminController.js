@@ -4,7 +4,8 @@
 
 const pool = require('../config/db');
 const { toAdminUserDTO, toAdminUserDTOList, toBookingDTOList } = require('../mappers/userMapper');
-const { logAction } = require('../models/AuditLog');
+const { logAction, listAudit } = require('../models/AuditLog');
+const { computeStats } = require('../utils/adminLive');
 const { expireStalePending } = require('../utils/bookingExpiry');
 const ledger = require('../utils/paymentLedger');
 const Chat = require('../models/Chat');
@@ -203,7 +204,7 @@ const listBookings = async (req, res) => {
             `SELECT b.booking_id, b.status, b.scheduled_date, b.notes, b.booking_date,
                     b.booking_type, b.batch_id, b.session_number, b.sessions_in_batch,
                     b.price, b.discount_percent, b.payment_status, b.decline_reason,
-                    b.cancelled_at, b.cancel_reason,
+                    b.cancelled_at, b.cancel_reason, b.issue_reported_at, b.issue_note, b.completed_at, b.auto_completed,
                     CONCAT(cby.first_name, ' ', cby.last_name) AS cancelled_by_name, cby.role AS cancelled_by_role,
                     s.service_name,
                     prov.user_id AS provider_id, prov.first_name AS provider_first_name,
@@ -323,24 +324,8 @@ const deleteUser = async (req, res) => {
 // ----------------------------------------------------------------
 const getStats = async (_req, res) => {
     try {
-        const [[{ totalUsers }]]     = await pool.execute('SELECT COUNT(*) AS totalUsers FROM users WHERE deleted_at IS NULL');
-        const [[{ totalProviders }]] = await pool.execute("SELECT COUNT(*) AS totalProviders FROM users WHERE role = 'PROVIDER' AND deleted_at IS NULL");
-        const [[{ totalRequesters }]]= await pool.execute("SELECT COUNT(*) AS totalRequesters FROM users WHERE role = 'REQUESTER' AND deleted_at IS NULL");
-        const [[{ totalBookings }]]  = await pool.execute('SELECT COUNT(*) AS totalBookings FROM bookings');
         await expireStalePending();
-        const [[{ pendingBookings }]]= await pool.execute("SELECT COUNT(*) AS pendingBookings FROM bookings WHERE status = 'PENDING'");
-        const [[{ blockedUsers }]]   = await pool.execute('SELECT COUNT(*) AS blockedUsers FROM users WHERE is_blocked = TRUE AND deleted_at IS NULL');
-        const [[{ totalServices }]]  = await pool.execute('SELECT COUNT(*) AS totalServices FROM services');
-
-        return res.json({
-            totalUsers,
-            totalProviders,
-            totalRequesters,
-            totalBookings,
-            pendingBookings,
-            blockedUsers,
-            totalServices,
-        });
+        return res.json(await computeStats());
     } catch (err) {
         console.error('Admin getStats error:', err);
         return res.status(500).json({ message: 'Error fetching stats.' });
@@ -352,12 +337,7 @@ const getStats = async (_req, res) => {
 // ----------------------------------------------------------------
 const getAuditLogs = async (req, res) => {
     try {
-        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
-        const [rows] = await pool.execute(
-            `SELECT audit_id, user_id, action, details, ip_address, created_at
-             FROM audit_logs ORDER BY created_at DESC LIMIT ${limit}`
-        );
-        return res.json(rows);
+        return res.json(await listAudit(req.query));
     } catch (err) {
         console.error('Admin getAuditLogs error:', err);
         return res.status(500).json({ message: 'Error fetching audit logs.' });
@@ -399,7 +379,9 @@ const reviewFlaggedMessage = async (req, res) => {
             'message: ' + message.message_id, req.ip);
 
         if (approve) {
-            emitToConversation(message.conversation_id, 'message:new', toMessageDTOList([message], null)[0]);
+            const convo = await Chat.getConversationById(message.conversation_id);
+            emitToConversation(message.conversation_id, 'message:new', toMessageDTOList([message], null)[0],
+                convo ? [convo.participant_one_id, convo.participant_two_id] : []);
         }
 
         return res.json({ message: approve ? 'Message approved and delivered.' : 'Message rejected.' });

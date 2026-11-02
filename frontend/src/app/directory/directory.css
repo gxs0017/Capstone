@@ -173,7 +173,7 @@
   white-space: nowrap;
 }
 
-.near-chip--SAME_AREA     { background: var(--color-success-bg); color: var(--color-success-on-bg); }
+.near-chip--SAME_NEIGHBOURHOOD     { background: var(--color-success-bg); color: var(--color-success-on-bg); }
 .near-chip--SAME_CITY     { background: var(--color-info-bg);    color: var(--color-info-on-bg); }
 .near-chip--SAME_PROVINCE { background: var(--color-neutral-bg); color: var(--color-neutral-on-bg); }
 
@@ -259,3 +259,199 @@
   font-size: 0.875rem;
   color: var(--mat-sys-on-surface-variant);
 }
+
+/* ── Merged from the old Services page: book by service, contact card, reviews ── */
+.services-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 8px;
+}
+
+.service-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.service-tier {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+}
+
+.service-tier:hover {
+  background: var(--mat-sys-surface-container-highest, #efefef);
+}
+
+.tier-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--mat-sys-primary);
+  flex-shrink: 0;
+}
+
+.tier-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.tier-arrow {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.contact-details {
+  padding: 8px 16px 12px;
+  background: var(--mat-sys-surface-container-low, #f8f9fa);
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.contact-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--mat-sys-primary);
+}
+
+.reviews-panel {
+  padding: 10px 16px 14px;
+  background: var(--mat-sys-surface-container-low, #f8f9fa);
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reviews-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.no-reviews {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.review-item {
+  border-top: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+  padding-top: 10px;
+}
+
+.review-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.review-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.review-author {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.review-stars {
+  display: flex;
+}
+
+.review-star {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--mat-sys-outline, #b0b0b0);
+}
+
+.review-star.filled {
+  color: var(--color-star);
+}
+
+.review-comment {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.review-date {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.search-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.search-row .search-field { flex: 1; min-width: 260px; }
+
+.adv-toggle { height: 56px; }
+.adv-toggle.adv-on { border-color: var(--mat-sys-primary); color: var(--mat-sys-primary); }
+
+.adv-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  border-radius: 10px;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.advanced-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  border-radius: var(--radius-md);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.jobs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.78rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+.jobs-chip mat-icon { font-size: 16px; width: 16px; height: 16px; }
+.rating-text.muted { color: var(--mat-sys-on-surface-variant); }
+
+.tier-price { font-weight: 600; font-size: 0.85rem; margin-right: 4px; }
+.entry-card .contact-details, .entry-card .reviews-panel { margin-top: 12px; }
+.entry-actions { flex-wrap: wrap; }

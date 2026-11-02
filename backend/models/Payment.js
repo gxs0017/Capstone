@@ -24,6 +24,46 @@ const totalsBy = async (whereColumn, userId, column) => {
     return totals;
 };
 
+/**
+ * A provider's money, by where it is in its journey:
+ *   held       paid by the requester, job not done yet
+ *   pending    credited to the provider, still inside the 7-day hold
+ *   available  hold over — can be withdrawn now
+ *   withdrawn  already requested for payout
+ */
+const balanceFor = async (providerId) => {
+    const [[row]] = await pool.execute(
+        `SELECT
+           COALESCE(SUM(CASE WHEN status = 'HELD' THEN provider_amount END), 0) AS held,
+           COALESCE(SUM(CASE WHEN status = 'RELEASED' AND payout_id IS NULL AND available_at >  NOW() THEN provider_amount END), 0) AS pending,
+           COALESCE(SUM(CASE WHEN status = 'RELEASED' AND payout_id IS NULL AND available_at <= NOW() THEN provider_amount END), 0) AS available,
+           COALESCE(SUM(CASE WHEN status = 'RELEASED' AND payout_id IS NOT NULL THEN provider_amount END), 0) AS withdrawn,
+           MIN(CASE WHEN status = 'RELEASED' AND payout_id IS NULL AND available_at > NOW() THEN available_at END) AS nextAvailableAt
+         FROM payments WHERE provider_id = ?`,
+        [providerId]
+    );
+    return {
+        held: Number(row.held), pending: Number(row.pending),
+        available: Number(row.available), withdrawn: Number(row.withdrawn),
+        nextAvailableAt: row.nextAvailableAt,
+    };
+};
+
+const getPayouts = async (providerId) => {
+    const [rows] = await pool.execute(
+        'SELECT * FROM payouts WHERE provider_id = ? ORDER BY payout_id DESC LIMIT 50', [providerId]);
+    return rows;
+};
+
+/** Every payout request, for the admin to action. */
+const listAllPayouts = async () => {
+    const [rows] = await pool.execute(
+        `SELECT po.*, CONCAT(u.first_name, ' ', u.last_name) AS provider_name, u.email AS provider_email
+         FROM payouts po JOIN users u ON u.user_id = po.provider_id
+         ORDER BY (po.status = 'REQUESTED') DESC, po.payout_id DESC LIMIT 100`);
+    return rows;
+};
+
 /** Payments this user made (as requester) and earned (as provider). */
 const getForUser = async (userId) => {
     const [paidEntries] = await pool.execute(
@@ -35,6 +75,8 @@ const getForUser = async (userId) => {
     return {
         paid:   { totals: await totalsBy('payer_id', userId, 'amount'), entries: paidEntries },
         earned: { totals: await totalsBy('provider_id', userId, 'provider_amount'), entries: earnedEntries },
+        balance: await balanceFor(userId),
+        payouts: await getPayouts(userId),
     };
 };
 
@@ -51,4 +93,4 @@ const getOverview = async () => {
     return { totals, entries };
 };
 
-module.exports = { getForUser, getOverview };
+module.exports = { getForUser, getOverview, balanceFor, listAllPayouts };

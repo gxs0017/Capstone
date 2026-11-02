@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
@@ -18,6 +19,9 @@ import { AdminBookingsComponent } from './admin-bookings';
 import { AdminLogsComponent } from './admin-logs';
 import { AdminModerationComponent } from './admin-moderation';
 import { AdminPaymentsComponent } from './admin-payments';
+import { AdminPostsComponent } from './admin-posts';
+import { ChatService } from '../services/chat.service';
+import { ChatSocketService } from '../services/chat-socket.service';
 
 @Component({
   selector: 'app-admin',
@@ -38,12 +42,16 @@ import { AdminPaymentsComponent } from './admin-payments';
     AdminLogsComponent,
     AdminModerationComponent,
     AdminPaymentsComponent,
+    AdminPostsComponent,
   ],
   templateUrl: './admin.html',
   styleUrl: './admin.css',
 })
 export class AdminComponent implements OnInit, OnDestroy {
   private adminService = inject(AdminService);
+  private chatService = inject(ChatService);
+  private chatSocket = inject(ChatSocketService);
+  private router = inject(Router);
   private subs = new Subscription();
 
   // Stats
@@ -60,7 +68,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   actionLoading = signal<number | null>(null); // userId being acted on
   actionMessage = signal('');
 
-  tab = signal<'users' | 'bookings' | 'logs' | 'moderation' | 'payments'>('users');
+  tab = signal<'users' | 'bookings' | 'logs' | 'moderation' | 'payments' | 'posts'>('users');
+
+  /** Set by "Activity" on a user: the Logs tab opens already filtered to that person. */
+  logUser = signal('');
+  live = signal(false);
 
   // Inline profile editor (one user at a time)
   editingId = signal<number | null>(null);
@@ -95,6 +107,14 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.loadStats();
     this.loadUsers();
 
+    // Live: the server pushes fresh platform numbers every second
+    this.chatSocket.connect();
+    this.subs.add(this.chatSocket.on<DashboardStats>('admin:stats').subscribe((s) => { this.stats.set(s); this.live.set(true); }));
+    // ...and the user list refreshes when someone registers, is blocked, etc.
+    this.subs.add(this.chatSocket.on<{ action: string }>('audit:new').pipe(debounceTime(600)).subscribe((e) => {
+      if (this.tab() === 'users' && /^(REGISTER|USER_)/.test(e.action)) this.loadUsers(this.currentPage());
+    }));
+
     // Auto-filter on role change
     this.subs.add(
       this.roleFilter.valueChanges.subscribe(() => this.loadUsers(1))
@@ -111,6 +131,20 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+  }
+
+  /** Admin opens (or starts) a conversation with this user in the Messages inbox. */
+  messageUser(user: AdminUser): void {
+    this.chatService.startConversation(user.id).subscribe({
+      next: (c) => this.router.navigate(['/messages'], { queryParams: { conversation: c.conversationId } }),
+      error: () => { this.actionMessage.set('Could not open the conversation.'); setTimeout(() => this.actionMessage.set(''), 4000); },
+    });
+  }
+
+  /** Jump to the Logs tab filtered to everything this person has done. */
+  viewActivity(user: AdminUser): void {
+    this.logUser.set(user.email);
+    this.tab.set('logs');
   }
 
   loadStats(): void {

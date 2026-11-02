@@ -1,32 +1,67 @@
 <div class="directory-page">
   <div class="directory-header">
-    <h1>Neighbourhood Directory</h1>
+    <h1>Directory</h1>
     <p>
-      Service providers around you — nearest first.
+      Find, message and book trusted service providers around you.
       @if (viewerArea(); as area) { Showing results near <strong>{{ area.neighbourhood || area.city }}</strong>. }
       @else if (!authService.isLoggedIn()) { <a routerLink="/login">Sign in</a> to rank providers by how close they are to you. }
     </p>
   </div>
 
-  <div class="filter-bar">
-    <mat-form-field appearance="outline" class="search-field">
+  <!-- Regular search, with the advanced filters one click away -->
+  <div class="search-row">
+    <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+      <mat-icon matPrefix>search</mat-icon>
       <mat-label>Search by name, service or area</mat-label>
       <input matInput [formControl]="searchFilter" placeholder="e.g. plumbing, Brampton, Marcus" />
     </mat-form-field>
-    <mat-form-field appearance="outline" class="service-field">
-      <mat-label>Service</mat-label>
-      <mat-select [formControl]="serviceFilter">
-        <mat-option value="">Any service</mat-option>
-        @for (s of serviceOptions(); track s) {
-          <mat-option [value]="s">{{ s }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-    <button mat-stroked-button (click)="clearFilters()"><mat-icon>clear</mat-icon> Clear</button>
+    <button mat-stroked-button class="adv-toggle" [class.adv-on]="showAdvanced() || filtersActive()" (click)="showAdvanced.set(!showAdvanced())">
+      <mat-icon>tune</mat-icon> Advanced filters
+      @if (activeAdvanced() > 0) { <span class="adv-count">{{ activeAdvanced() }}</span> }
+    </button>
+    @if (searchFilter.value || filtersActive()) {
+      <button mat-button (click)="clearFilters()"><mat-icon>clear</mat-icon> Clear all</button>
+    }
   </div>
 
+  @if (showAdvanced()) {
+    <div class="advanced-panel">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Service</mat-label>
+        <mat-select [formControl]="serviceFilter">
+          <mat-option value="">Any service</mat-option>
+          @for (s of serviceOptions(); track s) { <mat-option [value]="s">{{ s }}</mat-option> }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>City</mat-label>
+        <input matInput [formControl]="cityFilter" placeholder="e.g. Brampton" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Neighborhood</mat-label>
+        <input matInput [formControl]="areaFilter" placeholder="e.g. Bramalea" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Minimum rating</mat-label>
+        <mat-select [formControl]="minRating">
+          @for (r of ratingChoices; track r.value) { <mat-option [value]="r.value">{{ r.label }}</mat-option> }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Max price ($)</mat-label>
+        <input matInput type="number" min="1" [formControl]="maxPrice" placeholder="Any" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Sort by</mat-label>
+        <mat-select [formControl]="sortBy">
+          @for (s of sorts; track s.value) { <mat-option [value]="s.value">{{ s.label }}</mat-option> }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  }
+
   @if (!loading()) {
-    <p class="result-count">{{ total() }} {{ total() === 1 ? 'listing' : 'listings' }}</p>
+    <p class="result-count">{{ total() }} {{ total() === 1 ? 'provider' : 'providers' }}</p>
   }
 
   @if (loading()) {
@@ -55,33 +90,85 @@
           </div>
 
           <div class="entry-role">
-            <span class="role-chip role-chip--pro">Service provider</span>
             @if (e.avgRating !== null) {
               <span class="rating">
                 @for (i of [1,2,3,4,5]; track i) { <mat-icon class="star">{{ starIcon(e.avgRating!, i) }}</mat-icon> }
                 <span class="rating-text">{{ e.avgRating }} ({{ e.reviewCount }})</span>
               </span>
+            } @else {
+              <span class="rating-text muted">New · no reviews yet</span>
+            }
+            @if (e.completedJobs > 0) {
+              <span class="jobs-chip"><mat-icon>task_alt</mat-icon> {{ e.completedJobs }} {{ e.completedJobs === 1 ? 'job' : 'jobs' }} done</span>
             }
           </div>
 
           @if (e.bio) { <p class="entry-bio">{{ e.bio }}</p> }
 
           @if (e.services.length > 0) {
-            <div class="service-list">
-              @for (s of e.services; track s.name) {
-                <span class="service-pill">{{ s.name }} · {{ s.price | currency }}</span>
+            <p class="services-label">Book a service</p>
+            <div class="service-tiers">
+              @for (s of e.services; track s.id) {
+                <div class="service-tier" (click)="bookNow(e, s)" role="button" tabindex="0" (keydown.enter)="bookNow(e, s)">
+                  <mat-icon class="tier-icon">{{ serviceIcon(s.name) }}</mat-icon>
+                  <span class="tier-name">{{ s.name }}</span>
+                  <span class="tier-price">{{ s.price | currency }}</span>
+                  <mat-icon class="tier-arrow">chevron_right</mat-icon>
+                </div>
               }
             </div>
           }
 
           <div class="entry-actions">
-            <a mat-stroked-button [routerLink]="['/providers', e.id]"><mat-icon>storefront</mat-icon> Storefront</a>
-            @if (!isMe(e) && !authService.isAdmin()) {
-              <button mat-stroked-button color="primary" [disabled]="messagingId() === e.id" (click)="message(e)">
+            <a mat-button color="primary" [routerLink]="['/providers', e.id]"><mat-icon>storefront</mat-icon> Storefront</a>
+            <button mat-button color="primary" (click)="toggleReviews(e.id)">
+              <mat-icon>{{ expandedReviewsId() === e.id ? 'expand_less' : 'reviews' }}</mat-icon>
+              {{ expandedReviewsId() === e.id ? 'Hide' : 'Reviews' }}
+            </button>
+            @if (hasContact(e)) {
+              <button mat-button color="primary" (click)="toggleContact(e.id)">
+                <mat-icon>{{ expandedContactId() === e.id ? 'expand_less' : 'contact_mail' }}</mat-icon>
+                {{ expandedContactId() === e.id ? 'Hide' : 'Contact' }}
+              </button>
+            }
+            @if (!isMe(e)) {
+              <button mat-flat-button color="primary" [disabled]="messagingId() === e.id" (click)="message(e)">
                 <mat-icon>chat</mat-icon> Message
               </button>
             }
           </div>
+
+          @if (expandedContactId() === e.id) {
+            <div class="contact-details">
+              @if (e.email) { <div class="contact-row"><mat-icon class="contact-icon">email</mat-icon><span>{{ e.email }}</span></div> }
+              @if (e.phoneNumber) { <div class="contact-row"><mat-icon class="contact-icon">phone</mat-icon><span>{{ e.phoneNumber }}</span></div> }
+            </div>
+          }
+
+          @if (expandedReviewsId() === e.id) {
+            <div class="reviews-panel">
+              @if (loadingReviews() && reviewsFor(e.id).length === 0) {
+                <div class="reviews-loading"><mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner></div>
+              } @else if (reviewsFor(e.id).length === 0) {
+                <p class="no-reviews">No reviews yet.</p>
+              } @else {
+                @for (review of reviewsFor(e.id); track review.reviewId) {
+                  <div class="review-item">
+                    <div class="review-item-header">
+                      <span class="review-author">{{ review.requester.firstName }} {{ review.requester.lastName }}</span>
+                      <span class="review-stars">
+                        @for (star of [1, 2, 3, 4, 5]; track star) {
+                          <mat-icon class="review-star" [class.filled]="star <= review.rating">{{ star <= review.rating ? 'star' : 'star_border' }}</mat-icon>
+                        }
+                      </span>
+                    </div>
+                    @if (review.comment) { <p class="review-comment">{{ review.comment }}</p> }
+                    <p class="review-date">{{ review.createdAt | date:'mediumDate' }}</p>
+                  </div>
+                }
+              }
+            </div>
+          }
         </div>
       }
     </div>

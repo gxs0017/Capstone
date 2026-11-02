@@ -41,6 +41,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
 
   private pendingSelectId: number | null = null;
   private messageSub?: Subscription;
+  private reconnectSub?: Subscription;
 
   conversations = signal<Conversation[]>([]);
   messages = signal<ChatMessage[]>([]);
@@ -69,12 +70,22 @@ export class MessagesComponent implements OnInit, OnDestroy {
     // deep link to /messages should still work on its own.
     this.chatSocket.connect();
     this.messageSub = this.chatSocket.onNewMessage().subscribe((msg) => this.handleIncomingMessage(msg));
+    // After a dropped connection, catch up on anything missed
+    this.reconnectSub = this.chatSocket.on('socket:reconnected').subscribe(() => {
+      this.loadConversations();
+      const current = this.selected();
+      if (current) {
+        this.chatSocket.joinConversation(current.conversationId);
+        this.loadMessages(current.conversationId);
+      }
+    });
   }
 
   ngOnDestroy(): void {
     const current = this.selected();
     if (current) this.chatSocket.leaveConversation(current.conversationId);
     this.messageSub?.unsubscribe();
+    this.reconnectSub?.unsubscribe();
   }
 
   private handleIncomingMessage(msg: ChatMessage): void {

@@ -23,6 +23,35 @@
       }
     </div>
 
+    <div class="payout-admin">
+      <h3>Provider withdrawals</h3>
+      <p class="cancel-hint">Providers can withdraw 7 days after a job is credited. Send the money, then mark it as sent — the provider is notified.</p>
+      <table class="payments-table">
+        <thead><tr><th>#</th><th>Provider</th><th>Amount</th><th>Requested</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (p of d.payouts ?? []; track p.payoutId) {
+            <tr>
+              <td>{{ p.payoutId }}</td>
+              <td>{{ p.provider?.name }}<br><small>{{ p.provider?.email }}</small></td>
+              <td>{{ p.amount | currency: p.currency }}</td>
+              <td>{{ p.requestedAt | date: 'medium' }}</td>
+              <td>{{ p.status === 'PAID' ? 'Sent ' + (p.paidAt | date: 'mediumDate') : p.status }}</td>
+              <td>
+                @if (p.status === 'REQUESTED') {
+                  <button mat-stroked-button color="primary" [disabled]="paying() === p.payoutId" (click)="markPaid(p)">
+                    <mat-icon>check</mat-icon> Mark as sent
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6">No withdrawals requested yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="payout-admin">Payments</h3>
     <div class="payments-table-wrap">
       <table class="payments-table">
         <thead>

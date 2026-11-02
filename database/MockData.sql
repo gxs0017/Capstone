@@ -1,5 +1,5 @@
 -- ============================================================
--- Neighbourhood Booking App — Mock / Test Data
+-- Neighborhood Booking App — Mock / Test Data
 -- Run AFTER TableSchema.sql.
 -- Passwords are pre-hashed with bcrypt (10 rounds):
 --   All test users use password: pass123

@@ -13,6 +13,7 @@ const { expireStalePending } = require('../utils/bookingExpiry');
 const { toBookingDTOList } = require('../mappers/userMapper');
 const { logAction } = require('../models/AuditLog');
 const { notifyBookings } = require('../utils/realtime');
+const { sendCancellationNotices } = require('../utils/adminNotice');
 
 // ----------------------------------------------------------------
 // GET /api/bookings/quote?serviceId=1&providerId=2&type=ONE_TIME|RECURRING&sessions=4
@@ -240,6 +241,10 @@ const getMyBookings = async (req, res) => {
                 b.discount_percent,
                 b.payment_status,
                 b.decline_reason,
+                b.issue_reported_at,
+                b.issue_note,
+                b.completed_at,
+                b.auto_completed,
                 s.service_name,
                 prov.user_id   AS provider_id,
                 prov.first_name AS provider_first_name,
@@ -269,8 +274,11 @@ const getMyBookings = async (req, res) => {
         const withFlags = rows.map((r) => {
             const active = ['PENDING', 'CONFIRMED'].includes(r.status);
             const viewerIsRequester = r.requester_id === userId && r.provider_id !== userId;
+            const sessionOver = !!r.scheduled_date && new Date(r.scheduled_date).getTime() + rules.SESSION_MINUTES * 60000 <= now.getTime();
             return {
                 ...r,
+                can_review: r.requester_id === userId && !r.review_id
+                    && (r.status === 'COMPLETED' || (r.status === 'CONFIRMED' && sessionOver)),
                 can_cancel: active && (!viewerIsRequester || rules.withinCancelWindow(r.scheduled_date, now)),
                 cancel_deadline: r.scheduled_date ? rules.cancelDeadline(new Date(r.scheduled_date)) : null,
             };
@@ -342,6 +350,9 @@ const updateBookingStatus = async (req, res) => {
         if (status === 'COMPLETED' && booking.status !== 'CONFIRMED') {
             return res.status(400).json({ message: 'Only a confirmed booking can be marked completed.' });
         }
+        if (status === 'COMPLETED' && booking.issue_reported_at && !isAdmin) {
+            return res.status(400).json({ message: 'An issue is open on this booking, so it cannot be completed until an administrator resolves it.' });
+        }
         // The money for a paid booking is held until the job is done. Only the
         // person who paid (or an admin) can say it's done — otherwise a provider
         // could release their own payment.
@@ -349,6 +360,11 @@ const updateBookingStatus = async (req, res) => {
             return res.status(403).json({
                 message: 'This booking was paid online. Only the person who paid can confirm it is complete — ask them to mark it done.',
             });
+        }
+
+        // An admin cancelling someone's booking must say why: both people are sent that reason
+        if (status === 'CANCELLED' && isAdmin && !isProvider && !isRequester && reason.length < 3) {
+            return res.status(400).json({ message: 'Please give a reason (at least 3 characters). Both people are told why.' });
         }
 
         // Cancellation cutoff (requester only; providers and admins are exempt)
@@ -363,7 +379,8 @@ const updateBookingStatus = async (req, res) => {
         await pool.execute(
             `UPDATE bookings
              SET status = ?, decline_reason = ?, payment_status = ?,
-                 cancelled_by = ?, cancelled_at = ${status === 'CANCELLED' ? 'NOW()' : 'cancelled_at'}, cancel_reason = ?
+                 cancelled_by = ?, cancelled_at = ${status === 'CANCELLED' ? 'NOW()' : 'cancelled_at'}, cancel_reason = ?,
+                 completed_at = ${status === 'COMPLETED' ? 'NOW()' : 'completed_at'}
              WHERE booking_id = ?`,
             [
                 status,
@@ -375,17 +392,33 @@ const updateBookingStatus = async (req, res) => {
             ]
         );
 
-        logAction(req.user.id, 'BOOKING_' + status, 'booking: ' + req.params.id, req.ip);
+        const adminCancel = status === 'CANCELLED' && isAdmin && !isProvider && !isRequester;
+        logAction(req.user.id, adminCancel ? 'BOOKING_CANCELLED_BY_ADMIN' : 'BOOKING_' + status,
+            `booking: ${req.params.id}, service: ${booking.service_id}${reason ? ', reason: ' + reason : ''}${refund ? ', refund started' : ''}`, req.ip);
         notifyBookings(req.params.id, status.toLowerCase(), req.user.id);
+        if (adminCancel) {
+            // Each side gets the formatted notice in their Messages inbox
+            sendCancellationNotices({ bookingId: Number(req.params.id), adminId: req.user.id, reason })
+                .catch((err) => console.error('admin cancellation notice failed:', err.message));
+        }
 
         // Release the provider's earnings (completed) or return the money
         // through the original gateway (cancelled / declined). Fire-and-forget:
         // a gateway hiccup must never block the status change, and failed refunds retry.
-        if (refund || status === 'COMPLETED') ledger.settle();
+        // Wait (briefly) for the gateway so the very next screen already shows the money back
+        let refundStatus = null;
+        if (refund || status === 'COMPLETED') {
+            await Promise.race([ledger.settle(), new Promise((r) => setTimeout(r, 8000))]);
+            if (refund) {
+                const [[row]] = await pool.execute('SELECT status FROM payments WHERE booking_id = ?', [req.params.id]);
+                refundStatus = row ? row.status : null;
+            }
+        }
 
         return res.json({
             message: `Booking ${status.toLowerCase()} successfully.`,
-            refunded: refund,
+            refunded: refund && refundStatus === 'REFUNDED',
+            refundStatus,
         });
     } catch (err) {
         console.error('updateBookingStatus error:', err);
@@ -405,6 +438,7 @@ const getBookingById = async (req, res) => {
                     b.scheduled_date, b.notes, b.booking_date, b.booking_type, b.batch_id,
                     b.session_number, b.sessions_in_batch, b.price, b.discount_percent,
                     b.payment_status, b.decline_reason, b.cancelled_at, b.cancel_reason,
+                    b.issue_reported_at, b.issue_note, b.completed_at, b.auto_completed,
                     CONCAT(cby.first_name, ' ', cby.last_name) AS cancelled_by_name, cby.role AS cancelled_by_role,
                     s.service_name,
                     prov.user_id   AS provider_id, prov.first_name AS provider_first_name,
@@ -442,4 +476,129 @@ const getBookingById = async (req, res) => {
     }
 };
 
-module.exports = { getQuote, createBooking, getMyBookings, updateBookingStatus, getBookingById };
+// ----------------------------------------------------------------
+// POST /api/bookings/:id/issue — the requester reports a problem
+// Body: { note }
+// While an issue is open the payment is NOT released (and the booking is not
+// auto-completed); an admin looks into it and either refunds or clears it.
+// ----------------------------------------------------------------
+const reportIssue = async (req, res) => {
+    try {
+        const note = typeof req.body.note === 'string' ? req.body.note.trim().slice(0, 255) : '';
+        if (note.length < 5) return res.status(400).json({ message: 'Please describe the problem (at least 5 characters).' });
+
+        const [rows] = await pool.execute('SELECT * FROM bookings WHERE booking_id = ?', [req.params.id]);
+        const booking = rows[0];
+        if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+        if (booking.requester_id !== req.user.id) return res.status(403).json({ message: 'Only the person who booked can report an issue.' });
+        if (booking.status !== 'CONFIRMED') return res.status(400).json({ message: 'An issue can only be reported on a confirmed booking that has not been completed yet.' });
+        if (booking.issue_reported_at) return res.status(400).json({ message: 'You already reported an issue on this booking.' });
+
+        await pool.execute('UPDATE bookings SET issue_reported_at = NOW(), issue_note = ? WHERE booking_id = ?', [note, booking.booking_id]);
+        logAction(req.user.id, 'BOOKING_ISSUE_REPORTED', `booking: ${booking.booking_id}, issue: ${note}`, req.ip);
+        notifyBookings(booking.booking_id, 'issue', req.user.id);
+        return res.json({ message: 'Thanks — your payment stays on hold while an administrator reviews this.' });
+    } catch (err) {
+        console.error('reportIssue error:', err);
+        return res.status(500).json({ message: 'Error reporting the issue.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// POST /api/admin/bookings/:id/resolve-issue — admin clears an open issue
+// Body: { note? }   The job counts as done: the booking completes and the
+// payment is credited to the provider (cancel the booking instead to refund).
+// ----------------------------------------------------------------
+const resolveIssue = async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM bookings WHERE booking_id = ?', [req.params.id]);
+        const booking = rows[0];
+        if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+        if (!booking.issue_reported_at) return res.status(400).json({ message: 'This booking has no open issue.' });
+
+        await pool.execute(
+            `UPDATE bookings SET issue_reported_at = NULL,
+                    status = IF(status = 'CONFIRMED', 'COMPLETED', status),
+                    completed_at = IF(status = 'CONFIRMED', NOW(), completed_at)
+             WHERE booking_id = ?`, [booking.booking_id]);
+        logAction(req.user.id, 'BOOKING_ISSUE_RESOLVED', `booking: ${booking.booking_id}${req.body.note ? ', note: ' + String(req.body.note).slice(0, 200) : ''}`, req.ip);
+        notifyBookings(booking.booking_id, 'completed', req.user.id);
+        ledger.settle();
+        return res.json({ message: 'Issue cleared — the booking is completed and the provider is credited.' });
+    } catch (err) {
+        console.error('resolveIssue error:', err);
+        return res.status(500).json({ message: 'Error resolving the issue.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// POST /api/bookings/:id/report-problem — the requester reports what went wrong;
+// the booking is cancelled and any payment is refunded in full.
+// Body: { reason: NO_SHOW | NOT_DONE | NOT_AS_AGREED | UNREACHABLE | PLANS_CHANGED | OTHER, details? }
+// A problem with the provider is not held to the cancellation cutoff (a no-show
+// always happens after the start time); "plans changed" still is.
+// ----------------------------------------------------------------
+const PROBLEM_REASONS = {
+    NO_SHOW:       { label: "The provider didn't show up",       cutoff: false },
+    NOT_DONE:      { label: "The work wasn't done",               cutoff: false },
+    NOT_AS_AGREED: { label: 'The work was not as agreed',         cutoff: false },
+    UNREACHABLE:   { label: "I couldn't reach the provider",      cutoff: false },
+    PLANS_CHANGED: { label: 'My plans changed',                   cutoff: true  },
+    OTHER:         { label: 'Something else',                     cutoff: false, needsDetails: true },
+};
+
+const reportProblem = async (req, res) => {
+    try {
+        const def = PROBLEM_REASONS[String(req.body.reason || '')];
+        if (!def) return res.status(400).json({ message: 'Please choose what went wrong.' });
+        const details = typeof req.body.details === 'string' ? req.body.details.trim().slice(0, 150) : '';
+        if (def.needsDetails && details.length < 5) {
+            return res.status(400).json({ message: 'Please describe the problem (at least 5 characters).' });
+        }
+
+        const [rows] = await pool.execute(
+            `SELECT b.*, (SELECT COUNT(*) FROM reviews r WHERE r.booking_id = b.booking_id) AS reviewed
+             FROM bookings b WHERE b.booking_id = ?`, [req.params.id]);
+        const booking = rows[0];
+        if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+        if (booking.requester_id !== req.user.id) return res.status(403).json({ message: 'Only the person who booked can report a problem.' });
+        if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
+            return res.status(400).json({ message: `A ${booking.status.toLowerCase()} booking cannot be reported.` });
+        }
+        if (Number(booking.reviewed) > 0) return res.status(400).json({ message: 'This booking has already been reviewed.' });
+        if (def.cutoff && !rules.withinCancelWindow(booking.scheduled_date)) {
+            return res.status(400).json({
+                message: `Plans can only be changed up to ${rules.CANCEL_CUTOFF_HOURS} hours before the start. If something went wrong, pick the problem that happened.`,
+            });
+        }
+
+        const refund = booking.payment_status === 'PAID';
+        const reason = `Problem reported: ${def.label}${details ? ' — ' + details : ''}`.slice(0, 255);
+        await pool.execute(
+            `UPDATE bookings SET status = 'CANCELLED', payment_status = ?, cancelled_by = ?, cancelled_at = NOW(), cancel_reason = ?
+             WHERE booking_id = ? AND status IN ('PENDING', 'CONFIRMED')`,
+            [refund ? 'REFUNDED' : booking.payment_status, req.user.id, reason, booking.booking_id]
+        );
+
+        logAction(req.user.id, 'BOOKING_PROBLEM_REPORTED',
+            `booking: ${booking.booking_id}, problem: ${def.label}${details ? ', details: ' + details : ''}${refund ? ', refund started' : ''}`, req.ip);
+        notifyBookings(booking.booking_id, 'cancelled', req.user.id);
+
+        let refundStatus = null;
+        if (refund) {
+            await Promise.race([ledger.settle(), new Promise((r) => setTimeout(r, 8000))]);
+            const [[row]] = await pool.execute('SELECT status FROM payments WHERE booking_id = ?', [booking.booking_id]);
+            refundStatus = row ? row.status : null;
+        }
+        return res.json({
+            message: 'Problem reported and the booking was cancelled.',
+            refunded: refund && refundStatus === 'REFUNDED',
+            refundStatus,
+        });
+    } catch (err) {
+        console.error('reportProblem error:', err);
+        return res.status(500).json({ message: 'Error reporting the problem.' });
+    }
+};
+
+module.exports = { getQuote, createBooking, getMyBookings, updateBookingStatus, getBookingById, reportIssue, reportProblem, resolveIssue };

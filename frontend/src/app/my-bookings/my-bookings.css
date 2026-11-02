@@ -276,3 +276,18 @@
   color: var(--mat-sys-on-surface-variant);
   align-self: center;
 }
+.inline-icon { font-size: 16px; width: 16px; height: 16px; vertical-align: middle; margin-right: 2px; }
+
+/* Report a problem */
+.problem-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-low);
+}
+.problem-panel h4 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 6px; }
+.problem-field { width: 100%; }
+.problem-note { margin: 0; font-size: 0.85rem; color: var(--mat-sys-on-surface-variant); display: flex; align-items: center; gap: 6px; }
+.problem-actions { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }

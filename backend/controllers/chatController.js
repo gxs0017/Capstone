@@ -173,8 +173,14 @@ const markRead = async (req, res) => {
 // ----------------------------------------------------------------
 const sendMessage = async (req, res) => {
     try {
-        const allowed = await Chat.isParticipant(req.params.conversationId, req.user.id);
-        if (!allowed) return res.status(403).json({ message: 'You do not have access to this conversation.' });
+        const conversation = await Chat.getConversationById(req.params.conversationId);
+        if (!conversation || (conversation.participant_one_id !== req.user.id && conversation.participant_two_id !== req.user.id)) {
+            return res.status(403).json({ message: 'You do not have access to this conversation.' });
+        }
+        if (conversation.read_only_for === req.user.id) {
+            return res.status(403).json({ message: 'This is a notice from NeighborBook, so you cannot reply to it.' });
+        }
+        const otherId = conversation.participant_one_id === req.user.id ? conversation.participant_two_id : conversation.participant_one_id;
 
         const { flagged, reason } = moderateMessage(req.body.content);
 
@@ -187,13 +193,16 @@ const sendMessage = async (req, res) => {
             flagReason: flagged ? reason : null,
         });
 
+        // The text itself goes in the audit trail so an investigation can see exactly what was said
         logAction(req.user.id, flagged ? 'MESSAGE_FLAGGED' : 'MESSAGE_SENT',
-            'conversation: ' + req.params.conversationId + ', message: ' + message.message_id, req.ip);
+            `to user ${otherId}, conversation ${req.params.conversationId}, message ${message.message_id}: "${req.body.content}"`
+            + (flagged ? ` [held: ${reason}]` : ''), req.ip);
 
         // Held messages are never broadcast — the recipient must not see them
         // until (if ever) an admin approves them.
         if (!flagged) {
-            emitToConversation(req.params.conversationId, 'message:new', toMessageDTOList([message], null)[0]);
+            emitToConversation(req.params.conversationId, 'message:new', toMessageDTOList([message], null)[0],
+                [conversation.participant_one_id, conversation.participant_two_id]);
         }
 
         return res.status(201).json(toMessageDTOList([message], req.user.id)[0]);

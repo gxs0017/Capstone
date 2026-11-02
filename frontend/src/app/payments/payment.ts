@@ -9,7 +9,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { PaymentService, PaymentSummary } from '../services/payment.service';
 import { CardPaymentComponent } from './card-payment';
 
-type Method = 'paypal' | 'card';
+type Method = 'paypal' | 'card' | 'demo';
 
 /** One page to pay for a booking — or a whole weekly pack — by PayPal or card.
  *  The total shown here is computed by the server from the stored booking
@@ -51,6 +51,7 @@ export class PaymentComponent implements OnInit {
         this.loading.set(false);
         if (summary.methods.paypal) this.choose('paypal');
         else if (summary.methods.stripe) this.choose('card');
+        else if (summary.methods.demo) this.choose('demo');
         else this.error.set('Online payments are not available right now. You can pay on arrival instead.');
       },
       error: (err) => {
@@ -67,6 +68,18 @@ export class PaymentComponent implements OnInit {
       // Wait a tick for the PayPal container to exist in the DOM
       setTimeout(() => this.renderPaypal(), 0);
     }
+  }
+
+  demoPaying = signal(false);
+
+  payDemo(): void {
+    if (this.demoPaying()) return;
+    this.demoPaying.set(true);
+    this.paypalError.set('');
+    this.paymentService.payDemo(this.bookingId).subscribe({
+      next: () => { this.demoPaying.set(false); this.success.set(true); },
+      error: (err) => { this.demoPaying.set(false); this.paypalError.set(err?.error?.message || 'Could not record the payment.'); },
+    });
   }
 
   onCardPaid(): void {

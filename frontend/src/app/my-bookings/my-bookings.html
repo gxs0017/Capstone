@@ -32,13 +32,13 @@
         <mat-icon class="empty-icon">event_busy</mat-icon>
         <h3>No bookings yet</h3>
 
-        @if (authService.isRequester()) {
+        @if (!isRequestsView()) {
           <p>Browse services and book a provider to get started.</p>
           <a
             mat-raised-button
             color="primary"
-            routerLink="/search">
-            Browse Services
+            routerLink="/directory">
+            Browse the Directory
           </a>
         } @else {
           <p>Bookings from requesters will appear here.</p>
@@ -316,7 +316,7 @@
                       <mat-icon>block</mat-icon> Decline
                     </button>
                   } @else {
-                    <ng-container *ngTemplateOutlet="cancelBtn; context: { $implicit: booking }"></ng-container>
+                    <ng-container *ngTemplateOutlet="problemBtn; context: { $implicit: booking }"></ng-container>
                   }
                 }
               </mat-card-actions>
@@ -327,14 +327,24 @@
                 @if (actionLoading() === booking.bookingId) {
                   <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
                 } @else {
-                  <ng-container *ngTemplateOutlet="cancelBtn; context: { $implicit: booking }"></ng-container>
-                  @if (booking.paymentStatus === 'PAID' && isRequestsView()) {
-                    <!-- Paid online: only the person who paid can confirm the job is done (that releases the money) -->
-                    <span class="cutoff-note">Paid online — waiting for the customer to confirm the job is done</span>
+                  @if (isRequestsView()) {
+                    <ng-container *ngTemplateOutlet="cancelBtn; context: { $implicit: booking }"></ng-container>
+                  } @else {
+                    <ng-container *ngTemplateOutlet="problemBtn; context: { $implicit: booking }"></ng-container>
+                  }
+                  @if (booking.issue) {
+                    <span class="cutoff-note"><mat-icon class="inline-icon">report</mat-icon> Issue reported — the payment is on hold while an administrator reviews it</span>
+                  } @else if (booking.paymentStatus === 'PAID' && isRequestsView()) {
+                    <!-- Paid online: credited to the provider automatically once the session has happened, or sooner if the customer confirms -->
+                    <span class="cutoff-note">Paid online — you're credited automatically after the session, if no issue is raised</span>
+                  } @else if (booking.paymentStatus === 'PAID') {
+                    <button mat-raised-button color="accent" (click)="completeBooking(booking)"
+                            matTooltip="Otherwise it is released automatically after the session if you raise no issue">
+                      <mat-icon>task_alt</mat-icon> Confirm job done
+                    </button>
                   } @else {
                     <button mat-raised-button color="accent" (click)="completeBooking(booking)">
-                      <mat-icon>task_alt</mat-icon>
-                      {{ booking.paymentStatus === 'PAID' ? 'Confirm job done & release payment' : 'Mark as Completed' }}
+                      <mat-icon>task_alt</mat-icon> Mark as Completed
                     </button>
                   }
                 }
@@ -352,9 +362,47 @@
               </mat-card-actions>
             }
 
-            @if (booking.status === 'COMPLETED' && !isRequestsView() && !booking.review) {
+            @if (reportingId() === booking.bookingId) {
+              <div class="problem-panel">
+                <h4><mat-icon class="inline-icon">report_problem</mat-icon> Report a problem</h4>
+                <mat-form-field appearance="outline" class="problem-field" subscriptSizing="dynamic">
+                  <mat-label>What went wrong?</mat-label>
+                  <mat-select [formControl]="problemReason">
+                    @for (r of problemReasons; track r.value) {
+                      <mat-option [value]="r.value" [disabled]="!!r.isPlanChange && !booking.canCancel">
+                        {{ r.label }}@if (r.isPlanChange && !booking.canCancel) { (not within 24h of the start) }
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="problem-field" subscriptSizing="dynamic">
+                  <mat-label>{{ problemReason.value === 'OTHER' ? 'Tell us what happened' : 'More details (optional)' }}</mat-label>
+                  <textarea matInput rows="2" maxlength="150" [formControl]="problemDetails"></textarea>
+                </mat-form-field>
+                <p class="problem-note">
+                  <mat-icon class="inline-icon">info</mat-icon>
+                  @if (booking.paymentStatus === 'PAID') {
+                    The booking will be cancelled and your payment of {{ (booking.amount ?? booking.price) | currency }} will be refunded.
+                  } @else {
+                    The booking will be cancelled and the provider will be told why.
+                  }
+                </p>
+                <div class="problem-actions">
+                  @if (actionLoading() === booking.bookingId) {
+                    <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                  } @else {
+                    <button mat-button (click)="closeProblem()">Never mind</button>
+                    <button mat-raised-button color="warn" (click)="submitProblem(booking)" [disabled]="!problemReason.value">
+                      <mat-icon>report_problem</mat-icon> Report &amp; cancel booking
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (booking.canReview && !isRequestsView()) {
               <mat-card-actions align="end" class="card-actions">
-                <button mat-stroked-button color="primary" (click)="leaveReview(booking)">
+                <button mat-raised-button color="primary" (click)="leaveReview(booking)">
                   <mat-icon>rate_review</mat-icon> Leave a Review
                 </button>
               </mat-card-actions>
@@ -375,4 +423,11 @@
   @if (!booking.canCancel) {
     <span class="cutoff-note">Within 24h of start, cannot cancel</span>
   }
+</ng-template>
+
+<!-- Requester's replacement for "Cancel": say what went wrong, then cancel with a refund -->
+<ng-template #problemBtn let-booking>
+  <button mat-stroked-button color="warn" (click)="openProblem(booking)">
+    <mat-icon>report_problem</mat-icon> Report a problem
+  </button>
 </ng-template>

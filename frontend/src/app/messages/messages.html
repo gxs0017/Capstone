@@ -83,7 +83,9 @@
             (click)="selectConversation(convo)">
             <div class="conversation-avatar">{{ initialsFor(convo) }}</div>
             <div class="conversation-info">
-              <span class="conversation-name">{{ otherParticipantName(convo) }}</span>
+              <span class="conversation-name">{{ otherParticipantName(convo) }}
+                @if (convo.otherParticipant.role === 'ADMIN') { <span class="admin-badge">Admin</span> }
+              </span>
               @if (convo.pinnedBookingId) {
                 <span class="conversation-pin"><mat-icon class="pin-icon">push_pin</mat-icon> Booking #{{ convo.pinnedBookingId }}</span>
               }
@@ -106,7 +108,9 @@
       } @else {
         <div class="thread-header">
           <div class="conversation-avatar">{{ initialsFor(selected()!) }}</div>
-          <span class="thread-name">{{ otherParticipantName(selected()!) }}</span>
+          <span class="thread-name">{{ otherParticipantName(selected()!) }}
+            @if (selected()!.otherParticipant.role === 'ADMIN') { <span class="admin-badge">Admin</span> }
+          </span>
         </div>
 
         <div class="thread-messages">
@@ -134,6 +138,12 @@
           }
         </div>
 
+        @if (selected()!.readOnly) {
+          <div class="thread-readonly">
+            <mat-icon>info</mat-icon>
+            <span>This is a notice from NeighborBook, so replies are turned off. Questions? Contact support.</span>
+          </div>
+        } @else {
         <div class="thread-composer">
           <mat-form-field appearance="outline" class="composer-field">
             <mat-label>Type a message</mat-label>
@@ -143,6 +153,7 @@
             <mat-icon>send</mat-icon>
           </button>
         </div>
+        }
       }
     </main>
   </div>

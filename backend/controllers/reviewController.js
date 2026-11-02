@@ -1,8 +1,10 @@
 // controllers/reviewController.js
-// Review operations — a requester rates a COMPLETED booking once,
+// Review operations — a requester rates a finished booking once,
 // and either side can look up reviews for a provider.
 
 const pool = require('../config/db');
+const { notify } = require('../utils/notify');
+const { SESSION_MINUTES } = require('../utils/bookingRules');
 const { toReviewDTO, toReviewDTOList } = require('../mappers/userMapper');
 
 // ----------------------------------------------------------------
@@ -23,7 +25,7 @@ const submitReview = async (req, res) => {
         }
 
         const [bookings] = await pool.execute(
-            `SELECT b.booking_id, b.status, b.requester_id, pd.user_id AS provider_id
+            `SELECT b.booking_id, b.status, b.requester_id, b.scheduled_date, pd.user_id AS provider_id
              FROM bookings b
              JOIN provider_details pd ON b.provider_detail_id = pd.provider_detail_id
              WHERE b.booking_id = ?`,
@@ -40,8 +42,11 @@ const submitReview = async (req, res) => {
             return res.status(403).json({ message: 'You can only review your own bookings.' });
         }
 
-        if (booking.status !== 'COMPLETED') {
-            return res.status(400).json({ message: 'Only a completed booking can be reviewed.' });
+        // Reviewable once the job is done: completed, or confirmed with the session already over
+        const sessionOver = !!booking.scheduled_date
+            && new Date(booking.scheduled_date).getTime() + SESSION_MINUTES * 60000 <= Date.now();
+        if (booking.status !== 'COMPLETED' && !(booking.status === 'CONFIRMED' && sessionOver)) {
+            return res.status(400).json({ message: 'You can review a booking once the session has taken place.' });
         }
 
         const [existing] = await pool.execute(
@@ -57,6 +62,12 @@ const submitReview = async (req, res) => {
              VALUES (?, ?, ?, ?, ?)`,
             [bookingId, req.user.id, booking.provider_id, numericRating, comment || null]
         );
+
+        notify(booking.provider_id, {
+            type: 'REVIEW_RECEIVED', title: `New ${numericRating}-star review`,
+            body: comment ? `"${String(comment).slice(0, 120)}"` : 'A neighbor rated your work.', link: `/providers/${booking.provider_id}`,
+        });
+        require('../config/socket').emitToPublic('directory:changed', { providerId: booking.provider_id, change: 'review' });
 
         return res.status(201).json({
             message: 'Review submitted successfully.',

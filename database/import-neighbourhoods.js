@@ -7,8 +7,8 @@
 //   node import-neighbourhoods.js --bbox 43.5,-80.0,43.9,-79.5 --province ON
 //
 // bbox = south,west,north,east. Data © OpenStreetMap contributors (ODbL).
-const pool = require('./config/db');
-const { sweepAll } = require('./utils/neighbourhoods');
+const pool = require('../backend/config/db');
+const { sweepAll } = require('../backend/utils/neighbourhoods');
 
 const MIRRORS = [
     'https://overpass-api.de/api/interpreter',

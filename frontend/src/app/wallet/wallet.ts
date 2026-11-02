@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton } from '@angular/material/button';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { PaymentService, MyPayments, PaymentEntry, LedgerStatus } from '../services/payment.service';
 import { AuthService } from '../services/auth.service';
@@ -11,9 +12,10 @@ import { ChatSocketService } from '../services/chat-socket.service';
 
 type Tab = 'paid' | 'earned';
 
-/** "Payments" for requesters; "Payments & earnings" for providers. Every online
- *  payment moves HELD (money is safe with the platform) -> RELEASED (the job was
- *  confirmed done, the provider has earned it) or REFUNDED (cancelled in time). */
+/** "Payments" for requesters; "Payments & earnings" for providers. An online payment
+ *  is HELD safely by the platform until the session has happened with no issue raised;
+ *  then it is credited to the provider's balance the same day (RELEASED). The provider
+ *  can withdraw it once the 7-day hold is over. A cancelled booking is REFUNDED. */
 @Component({
   selector: 'app-wallet',
   standalone: true,
@@ -25,12 +27,14 @@ export class WalletComponent implements OnInit {
   private paymentService = inject(PaymentService);
   private chatSocket = inject(ChatSocketService);
   private destroyRef = inject(DestroyRef);
+  private snackBar = inject(MatSnackBar);
   authService = inject(AuthService);
 
   data = signal<MyPayments | null>(null);
   loading = signal(true);
   error = signal('');
   tab = signal<Tab>('paid');
+  withdrawing = signal(false);
 
   isProvider = computed(() => this.authService.isProvider());
 
@@ -52,6 +56,7 @@ export class WalletComponent implements OnInit {
     this.load();
     // Live: payments and releases show up the moment they happen
     this.chatSocket.on('booking:changed').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
+    this.chatSocket.on('socket:reconnected').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
 
   private load(): void {
@@ -67,6 +72,32 @@ export class WalletComponent implements OnInit {
     });
   }
 
+  withdraw(): void {
+    if (this.withdrawing()) return;
+    this.withdrawing.set(true);
+    this.paymentService.withdraw().subscribe({
+      next: (res) => {
+        this.withdrawing.set(false);
+        this.snackBar.open(res.message, 'OK', { duration: 5000 });
+        this.load();
+      },
+      error: (err) => {
+        this.withdrawing.set(false);
+        this.snackBar.open(err.error?.message || 'Could not request the withdrawal.', 'Dismiss', { duration: 6000 });
+      },
+    });
+  }
+
+  /** Where one earned payment stands in the journey from "paid" to "withdrawn". */
+  earnedStage(e: PaymentEntry): string {
+    if (e.status !== 'RELEASED') return this.statusLabel(e.status);
+    if (e.payoutId) return 'Withdrawn';
+    if (e.availableAt && new Date(e.availableAt).getTime() > Date.now()) {
+      return `Credited — withdrawable ${new Date(e.availableAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}`;
+    }
+    return 'Available to withdraw';
+  }
+
   amountOf(e: PaymentEntry): number {
     return this.tab() === 'earned' ? e.providerAmount : e.amount;
   }
@@ -78,9 +109,9 @@ export class WalletComponent implements OnInit {
   statusLabel(status: LedgerStatus): string {
     const earned = this.tab() === 'earned';
     switch (status) {
-      case 'HELD':          return earned ? 'Pending — job not done yet' : 'Held until the job is done';
-      case 'RELEASED':      return earned ? 'Earned' : 'Released to provider';
-      case 'REFUNDED':      return 'Refunded';
+      case 'HELD':          return earned ? 'Held — job not done yet' : 'Held safely until the job is done';
+      case 'RELEASED':      return earned ? 'Credited' : 'Paid to the provider';
+      case 'REFUNDED':      return earned ? 'Refunded to the requester' : 'Refunded to you';
       case 'REFUND_FAILED': return 'Refund in progress';
     }
   }

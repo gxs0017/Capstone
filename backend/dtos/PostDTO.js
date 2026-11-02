@@ -10,6 +10,7 @@ const PostDTO = (row) => ({
     city:         row.city,
     neighbourhood: row.neighbourhood ?? null,
     status:       row.status,
+    moderationReason: row.moderation_reason ?? null,
     createdAt:    row.created_at,
     likeCount:    Number(row.like_count) || 0,
     commentCount: Number(row.comment_count) || 0,

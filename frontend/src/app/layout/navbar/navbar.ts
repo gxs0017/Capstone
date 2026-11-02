@@ -5,11 +5,12 @@ import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { MatIcon } from '@angular/material/icon';
 import { MatBadge } from '@angular/material/badge';
 import { MatDivider } from '@angular/material/divider';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { ChatService } from '../../services/chat.service';
 import { ChatSocketService } from '../../services/chat-socket.service';
+import { NotificationService, AppNotification } from '../../services/notification.service';
 import { CommonModule } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -36,54 +37,54 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 export class Navbar implements OnInit, OnDestroy {
   authService = inject(AuthService);
   chatService = inject(ChatService);
+  notifications = inject(NotificationService);
   private chatSocket = inject(ChatSocketService);
   private snackBar = inject(MatSnackBar);
-  private messageSub?: Subscription;
-  private bookingSub?: Subscription;
+  private router = inject(Router);
+  private subs = new Subscription();
 
   constructor() {
-    // Chat isn't an admin feature (admins moderate, they don't chat), so the
-    // connection — and the badge it feeds — only exists for a logged-in
-    // requester/provider. This stays alive app-wide, not just on /messages.
+    // One app-wide connection. Signed in (admins too — they message people and watch live logs)
+    // it carries chat, bookings and notifications; signed out it still carries the public live data.
     effect(() => {
-      if (this.authService.isLoggedIn() && !this.authService.isAdmin()) {
-        this.chatSocket.connect();
+      const loggedIn = this.authService.isLoggedIn();
+      this.authService.currentUser(); // reconnect if the account changes
+      this.chatSocket.connect();
+      if (loggedIn) {
         this.chatService.refreshUnreadCount();
+        this.notifications.load();
       } else {
-        this.chatSocket.disconnect();
         this.chatService.unreadTotal.set(0);
+        this.notifications.clear();
       }
     });
   }
 
   ngOnInit(): void {
-    this.messageSub = this.chatSocket.onNewMessage().subscribe(() => this.chatService.refreshUnreadCount());
+    this.subs.add(this.chatSocket.onNewMessage().subscribe(() => this.chatService.refreshUnreadCount()));
 
-    // A short pop-up when someone else changes one of your bookings (your own actions don't pop up)
-    this.bookingSub = this.chatSocket.on<{ reason: string; actorId: number | null }>('booking:changed').subscribe((e) => {
-      const me = this.authService.currentUser()?.id;
-      if (e.actorId != null && e.actorId === me) return;
-      const text = this.bookingToast(e.reason);
-      if (text) this.snackBar.open(text, 'Dismiss', { duration: 5000, horizontalPosition: 'end', verticalPosition: 'bottom' });
-    });
-  }
+    // Something happened to you: add it to the bell and pop a short toast
+    this.subs.add(this.chatSocket.on<AppNotification>('notification:new').subscribe((n) => {
+      this.notifications.receive(n);
+      this.snackBar.open(n.title, 'View', { duration: 5000, horizontalPosition: 'end', verticalPosition: 'bottom' })
+        .onAction().subscribe(() => this.open(n));
+    }));
 
-  private bookingToast(reason: string): string | null {
-    switch (reason) {
-      case 'created':   return 'New booking request received.';
-      case 'confirmed': return 'Your booking was confirmed.';
-      case 'declined':  return 'A booking request was declined.';
-      case 'cancelled': return 'A booking was cancelled.';
-      case 'completed': return 'A job was marked completed.';
-      case 'paid':      return 'A payment was received for a booking.';
-      case 'expired':   return 'A booking request expired.';
-      default:          return null;
-    }
+    // Anything missed while the connection was down
+    this.subs.add(this.chatSocket.on('socket:reconnected').subscribe(() => {
+      if (!this.authService.isLoggedIn()) return;
+      this.chatService.refreshUnreadCount();
+      this.notifications.load();
+    }));
   }
 
   ngOnDestroy(): void {
-    this.messageSub?.unsubscribe();
-    this.bookingSub?.unsubscribe();
+    this.subs.unsubscribe();
+  }
+
+  open(n: AppNotification): void {
+    this.notifications.markRead(n);
+    if (n.link) this.router.navigateByUrl(n.link);
   }
 
   logout(): void {

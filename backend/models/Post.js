@@ -98,6 +98,38 @@ const deletePost = async (postId) => {
     return result.affectedRows > 0;
 };
 
+/** Admin view: every post in any status, filterable, newest first. */
+const listForAdmin = async ({ status, search, type } = {}, page = 1, limit = 15) => {
+    const safePage  = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 15));
+    const offset    = (safePage - 1) * safeLimit;
+    const where = [];
+    const params = [];
+    if (status) { where.push('p.status = ?'); params.push(status); }
+    if (type)   { where.push('p.type = ?');   params.push(type); }
+    if (search) {
+        const term = `%${search}%`;
+        where.push("(p.title LIKE ? OR p.description LIKE ? OR CONCAT(u.first_name, ' ', u.last_name) LIKE ? OR p.post_id = ?)");
+        params.push(term, term, term, Number(search) || 0);
+    }
+    const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const [[{ total }]] = await pool.execute(
+        `SELECT COUNT(*) AS total FROM posts p JOIN users u ON p.user_id = u.user_id ${clause}`, params);
+    const [rows] = await pool.execute(
+        `${postSelect(false)} ${clause} ORDER BY p.created_at DESC, p.post_id DESC LIMIT ${safeLimit} OFFSET ${offset}`, params);
+    return { data: rows, total, page: safePage, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) };
+};
+
+/** Admin moderation: ARCHIVE (hide, keep), REMOVE (take down, kept on record) or RESTORE (back to the board). */
+const moderate = async (postId, adminId, action, reason) => {
+    const status = { ARCHIVE: 'ARCHIVED', REMOVE: 'REMOVED', RESTORE: 'OPEN' }[action];
+    const [result] = await pool.execute(
+        `UPDATE posts SET status = ?, moderation_reason = ?, moderated_by = ?, moderated_at = NOW() WHERE post_id = ?`,
+        [status, action === 'RESTORE' ? null : reason, adminId, postId]
+    );
+    return result.affectedRows > 0 ? getPostById(postId) : null;
+};
+
 // ── Comments ──────────────────────────────────────────────────────────────────
 
 /** Every comment on a post, oldest first (the UI nests replies under their parent). */
@@ -155,6 +187,6 @@ const toggleLike = async (postId, userId) => {
 };
 
 module.exports = {
-    listPosts, listPostsByUser, getPostById, createPost, closePost, deletePost,
+    listPosts, listPostsByUser, listForAdmin, moderate, getPostById, createPost, closePost, deletePost,
     listComments, getComment, addComment, deleteComment, toggleLike,
 };

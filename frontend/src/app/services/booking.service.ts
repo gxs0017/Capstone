@@ -5,6 +5,7 @@ import { API_BASE } from '../core/api.config';
 
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'DECLINED' | 'COMPLETED' | 'EXPIRED';
 export type BookingType = 'ONE_TIME' | 'RECURRING';
+export type ProblemReason = 'NO_SHOW' | 'NOT_DONE' | 'NOT_AS_AGREED' | 'UNREACHABLE' | 'PLANS_CHANGED' | 'OTHER';
 export type PaymentStatus = 'UNPAID' | 'PAID' | 'REFUNDED' | 'FAILED';
 
 export interface Booking {
@@ -27,9 +28,15 @@ export interface Booking {
   declineReason: string | null;
   /** Server-computed: false once inside the cancellation cutoff (requesters). */
   canCancel: boolean;
+  /** Server-computed: the requester can leave a review now (job finished, not yet reviewed). */
+  canReview?: boolean;
   cancelDeadline: string | null;
   /** Cancellation log: set once a booking has been cancelled. */
   cancellation: { at: string; reason: string | null; by: string | null; byRole: string | null } | null;
+  /** An open problem the requester reported — the payment is on hold while it is reviewed. */
+  issue?: { reportedAt: string; note: string | null } | null;
+  completedAt?: string | null;
+  autoCompleted?: boolean;
   provider: {
     id: number;
     firstName: string;
@@ -115,12 +122,23 @@ export class BookingService {
     return this.http.get<Booking>(`${this.API}/${bookingId}`);
   }
 
+  /** The requester reports a problem: the payment stays on hold until an admin reviews it. */
+  reportIssue(bookingId: number, note: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API}/${bookingId}/issue`, { note });
+  }
+
+  /** The requester reports what went wrong: the booking is cancelled and any payment is refunded. */
+  reportProblem(bookingId: number, reason: ProblemReason, details?: string): Observable<{ message: string; refunded: boolean; refundStatus: string | null }> {
+    return this.http.post<{ message: string; refunded: boolean; refundStatus: string | null }>(
+      `${this.API}/${bookingId}/report-problem`, { reason, details });
+  }
+
   updateStatus(
     bookingId: number,
     status: 'CONFIRMED' | 'DECLINED' | 'CANCELLED' | 'COMPLETED',
     reason?: string,
-  ): Observable<{ message: string; refunded: boolean }> {
-    return this.http.patch<{ message: string; refunded: boolean }>(`${this.API}/${bookingId}/status`, {
+  ): Observable<{ message: string; refunded: boolean; refundStatus?: string | null }> {
+    return this.http.patch<{ message: string; refunded: boolean; refundStatus?: string | null }>(`${this.API}/${bookingId}/status`, {
       status,
       reason,
     });

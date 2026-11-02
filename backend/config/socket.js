@@ -3,6 +3,8 @@
 //   conversation:<id>  chat messages (server-side participant check before joining)
 //   user:<id>          a person's private channel — booking and payment changes
 //   board / post:<id>  the community board (new posts, counts) and one open post's comments
+//   public             directory / services changes (signed-out visitors may join too)
+//   admins             every audit entry and platform stat, live (admins only)
 // A failed handshake is written to the audit log (same as any other auth
 // failure elsewhere in the app), including the IP it came from.
 
@@ -22,6 +24,8 @@ const roomName = (conversationId) => `conversation:${conversationId}`;
 const userRoom = (userId) => `user:${userId}`;
 const postRoom = (postId) => `post:${postId}`;
 const BOARD_ROOM = 'board';
+const PUBLIC_ROOM = 'public'; // directory / services — even visitors who aren't signed in
+const ADMIN_ROOM = 'admins';
 
 // Mirrors the x-forwarded-for handling Express's `trust proxy` gives req.ip,
 // since Socket.IO's handshake doesn't go through Express's trust-proxy logic.
@@ -44,8 +48,9 @@ function initSocket(httpServer) {
         const ip = handshakeIp(socket);
 
         if (!token) {
-            logAction(null, 'CHAT_AUTH_FAILED', 'reason: no token', ip);
-            return next(new Error('Authentication required.'));
+            // Visitors who aren't signed in may watch public data (directory, board) — nothing private
+            socket.user = null;
+            return next();
         }
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -58,7 +63,15 @@ function initSocket(httpServer) {
     });
 
     io.on('connection', (socket) => {
+        socket.join(PUBLIC_ROOM);
+        if (!socket.user) {
+            socket.join(BOARD_ROOM);
+            socket.on('post:join', (postId) => { if (Number.isInteger(Number(postId))) socket.join(postRoom(postId)); });
+            socket.on('post:leave', (postId) => { socket.leave(postRoom(postId)); });
+            return;
+        }
         const userId = socket.user.id;
+        if (socket.user.role === 'ADMIN') socket.join(ADMIN_ROOM);
 
         if (!userSockets.has(userId)) userSockets.set(userId, new Set());
         userSockets.get(userId).add(socket.id);
@@ -116,9 +129,14 @@ function initSocket(httpServer) {
     return io;
 }
 
-function emitToConversation(conversationId, event, payload) {
+/** Chat event for a conversation. Also sent to each participant's own room (joined
+ *  the instant they connect), so delivery never depends on a room join that is
+ *  still in flight. A socket in several of these rooms still gets it once. */
+function emitToConversation(conversationId, event, payload, participantIds = []) {
     if (!io) return;
-    io.to(roomName(conversationId)).emit(event, payload);
+    let target = io.to(roomName(conversationId));
+    participantIds.filter(Boolean).forEach((id) => { target = target.to(userRoom(id)); });
+    target.emit(event, payload);
 }
 
 /** Pull any of `userId`'s already-connected sockets into a (just-created) conversation's room. */
@@ -149,4 +167,30 @@ function emitToPost(postId, event, payload) {
     io.to(postRoom(postId)).emit(event, payload);
 }
 
-module.exports = { initSocket, emitToConversation, joinUserToConversation, emitToUser, emitToBoard, emitToPost };
+/** Event for everyone watching public data (including signed-out visitors). */
+function emitToPublic(event, payload) {
+    if (!io) return;
+    io.to(PUBLIC_ROOM).emit(event, payload);
+}
+
+/** Event for every signed-in admin. */
+function emitToAdmins(event, payload) {
+    if (!io) return;
+    io.to(ADMIN_ROOM).emit(event, payload);
+}
+
+/** Is any admin connected right now? (lets us skip work nobody would see) */
+function adminsOnline() {
+    return !!io && (io.sockets.adapter.rooms.get(ADMIN_ROOM)?.size || 0) > 0;
+}
+
+/** How many distinct signed-in users have the app open right now. */
+function onlineUserCount() {
+    return userSockets.size;
+}
+
+module.exports = {
+    onlineUserCount,
+    initSocket, emitToConversation, joinUserToConversation, emitToUser, emitToBoard, emitToPost,
+    emitToPublic, emitToAdmins, adminsOnline,
+};

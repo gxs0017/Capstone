@@ -24,7 +24,7 @@ export class HomeComponent {
 
   categories: ServiceCategory[] = [
     { icon: 'ac_unit', name: 'Snow Shovelling', description: 'Keep your driveway and walkways clear this winter.' },
-    { icon: 'child_care', name: 'Babysitting', description: 'Trusted neighbours to look after your little ones.' },
+    { icon: 'child_care', name: 'Babysitting', description: 'Trusted neighbors to look after your little ones.' },
     { icon: 'school', name: 'Tutoring', description: 'Expert help with homework and school subjects.' },
     { icon: 'yard', name: 'Lawn Mowing', description: 'Keep your yard looking its best all season long.' },
   ];

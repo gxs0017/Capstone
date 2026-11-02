@@ -1,6 +1,6 @@
-# Neighbourhood Booking App
+# Neighborhood Booking App
 
-A full-stack peer-to-peer marketplace where neighbours offer and book local services
+A full-stack peer-to-peer marketplace where neighbors offer and book local services
 (snow shovelling, babysitting, tutoring, lawn mowing). Capstone project, 2026.
 
 ## Tech stack

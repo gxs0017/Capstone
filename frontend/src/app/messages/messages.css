@@ -292,3 +292,30 @@
     max-height: 200px;
   }
 }
+
+.message-content { white-space: pre-line; }
+
+.admin-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--mat-sys-tertiary-container, #e7def8);
+  color: var(--mat-sys-on-tertiary-container, #1d192b);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.thread-readonly {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}

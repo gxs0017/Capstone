@@ -73,6 +73,17 @@ export class AuthService {
     );
   }
 
+  /** Requesters: start offering services. The reply carries a new token because the role changes. */
+  becomeProvider(services: string[]): Observable<{ message: string; token: string; user: UserProfile }> {
+    return this.http.post<{ message: string; token: string; user: UserProfile }>(`${this.API}/profile/become-provider`, { services }).pipe(
+      tap((res) => {
+        localStorage.setItem(this.TOKEN_KEY, res.token);
+        localStorage.setItem(this.USER_KEY, JSON.stringify(res.user));
+        this.currentUser.set(res.user);
+      })
+    );
+  }
+
   /** Providers: choose whether other people can see their email / phone number. */
   updateContactPrefs(changes: { showEmail?: boolean; showPhone?: boolean }): Observable<UserProfile> {
     return this.http.patch<UserProfile>(`${this.API}/profile/contact`, changes).pipe(

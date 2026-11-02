@@ -104,6 +104,10 @@ const BookingDTO = (row) => ({
     paymentStatus: row.payment_status,
     declineReason: row.decline_reason,
     canCancel:     !!row.can_cancel,
+    canReview:     !!row.can_review,
+    issue:         row.issue_reported_at ? { reportedAt: row.issue_reported_at, note: row.issue_note ?? null } : null,
+    completedAt:   row.completed_at ?? null,
+    autoCompleted: !!row.auto_completed,
     cancelDeadline: row.cancel_deadline ?? null,
     cancellation:  row.cancelled_at ? {
         at:     row.cancelled_at,

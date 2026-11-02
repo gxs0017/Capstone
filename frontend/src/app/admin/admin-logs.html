@@ -1,10 +1,41 @@
-<div class="filter-bar">
-  <mat-form-field appearance="outline" class="filter-field">
-    <mat-label>Search action, details, IP, or user id</mat-label>
-    <input matInput [formControl]="searchFilter" placeholder="e.g. BOOKING_CREATED" />
+<div class="logs-toolbar">
+  <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
+    <mat-label>Person (name, email or user id)</mat-label>
+    <input matInput [formControl]="userCtl" placeholder="e.g. jane@example.com" />
   </mat-form-field>
-  <button mat-icon-button (click)="load()" matTooltip="Refresh">
-    <mat-icon>refresh</mat-icon>
+  <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
+    <mat-label>Search action, text or IP</mat-label>
+    <input matInput [formControl]="searchCtl" placeholder="e.g. plumber, 192.168…" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="filter-field narrow" subscriptSizing="dynamic">
+    <mat-label>Type of activity</mat-label>
+    <mat-select [formControl]="categoryCtl">
+      @for (c of categories; track c.value) { <mat-option [value]="c.value">{{ c.label }}</mat-option> }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="filter-field date" subscriptSizing="dynamic">
+    <mat-label>From</mat-label>
+    <input matInput type="date" [formControl]="fromCtl" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="filter-field date" subscriptSizing="dynamic">
+    <mat-label>To</mat-label>
+    <input matInput type="date" [formControl]="toCtl" />
+  </mat-form-field>
+</div>
+
+<div class="logs-actions">
+  <button mat-stroked-button class="live-toggle" [class.live-on]="live()" (click)="live.set(!live())"
+          matTooltip="New activity appears here the moment it happens">
+    <span class="live-dot" [class.live-dot--on]="live()"></span>
+    {{ live() ? 'Live' : 'Paused' }}
+  </button>
+  @if (newCount() > 0 && live()) { <span class="new-count">{{ newCount() }} new since you opened this</span> }
+  <span class="spacer"></span>
+  <span class="log-count">{{ visible().length }} entries</span>
+  <button mat-button (click)="clear()"><mat-icon>clear</mat-icon> Clear</button>
+  <button mat-button (click)="load()"><mat-icon>refresh</mat-icon> Refresh</button>
+  <button mat-stroked-button (click)="exportCsv()" matTooltip="Download what you see as a spreadsheet (for investigations)">
+    <mat-icon>download</mat-icon> Export
   </button>
 </div>
 
@@ -13,7 +44,7 @@
     <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
     <p>Loading logs...</p>
   </div>
-} @else if (filteredLogs().length === 0) {
+} @else if (visible().length === 0) {
   <div class="state-center">
     <mat-icon class="empty-icon">receipt_long</mat-icon>
     <h3>No log entries found</h3>
@@ -23,19 +54,28 @@
     <thead>
       <tr>
         <th>Time</th>
-        <th>User</th>
+        <th>Person</th>
         <th>Action</th>
-        <th>Details</th>
+        <th>What happened</th>
         <th>IP</th>
       </tr>
     </thead>
     <tbody>
-      @for (log of filteredLogs(); track log.audit_id) {
-        <tr>
-          <td>{{ log.created_at | date:'medium' }}</td>
-          <td>{{ log.user_id ?? '—' }}</td>
-          <td><span class="action-chip">{{ log.action }}</span></td>
-          <td>{{ log.details || '—' }}</td>
+      @for (log of visible(); track log.audit_id) {
+        <tr class="log-row">
+          <td class="time-cell">{{ log.created_at | date:'MMM d, HH:mm:ss' }}</td>
+          <td>
+            @if (log.user_id != null) {
+              <a class="person-link" (click)="filterToUser(log)" matTooltip="Show only this person's activity">
+                {{ log.user_name || ('User #' + log.user_id) }}
+              </a>
+              <div class="person-sub">{{ log.user_role }} · #{{ log.user_id }}</div>
+            } @else {
+              <span class="person-sub">System / visitor</span>
+            }
+          </td>
+          <td><span class="action-chip" [ngClass]="tone(log.action)">{{ log.action }}</span></td>
+          <td class="details-cell">{{ log.details || '—' }}</td>
           <td class="ip-cell">{{ log.ip_address || '—' }}</td>
         </tr>
       }

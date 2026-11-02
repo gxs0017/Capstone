@@ -49,6 +49,11 @@ export class ProfileComponent implements OnInit {
   serviceLoading   = signal(false);
   serviceMessage   = signal('');
 
+  // Requesters: start offering services (comma-separated names)
+  servicesToOffer   = new FormControl('', { nonNullable: true });
+  upgrading         = signal(false);
+  upgradeMessage    = signal('');
+
   // Public listing (providers): bio shown on the directory card and storefront
   bio               = new FormControl('');
   savingDirectory   = signal(false);
@@ -88,6 +93,27 @@ export class ProfileComponent implements OnInit {
       error: (err) => {
         this.savingDirectory.set(false);
         this.directoryMessage.set(err?.error?.message || 'Could not save your directory settings.');
+      },
+    });
+  }
+
+  /** A requester becomes a provider too: they keep booking neighbors and gain the provider tools. */
+  becomeProvider(): void {
+    const names = this.servicesToOffer.value.split(',').map((n) => n.trim()).filter(Boolean);
+    if (names.length === 0) { this.upgradeMessage.set('Type at least one service you can offer.'); return; }
+    this.upgrading.set(true);
+    this.upgradeMessage.set('');
+    this.authService.becomeProvider(names).subscribe({
+      next: () => {
+        this.upgrading.set(false);
+        this.servicesToOffer.setValue('');
+        this.syncDirectoryFields();
+        this.loadMyServices();
+        this.loadAvailableServices();
+      },
+      error: (err) => {
+        this.upgrading.set(false);
+        this.upgradeMessage.set(err?.error?.message || 'Could not set up your provider account. Please try again.');
       },
     });
   }

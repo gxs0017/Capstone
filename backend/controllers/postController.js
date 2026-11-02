@@ -10,6 +10,7 @@ const Post = require('../models/Post');
 const { POST_TYPES } = require('../utils/postTypes');
 const { toPostDTO, toPostDTOList, toCommentDTO, toCommentDTOList } = require('../mappers/postMapper');
 const { logAction } = require('../models/AuditLog');
+const { notify } = require('../utils/notify');
 
 // Live like/comment counts for everyone watching the board or that post
 const emitStats = async (postId) => {
@@ -68,6 +69,11 @@ const getPost = async (req, res) => {
     try {
         const post = await Post.getPostById(req.params.id, req.user ? req.user.id : null);
         if (!post) return res.status(404).json({ message: 'Post not found.' });
+        // Archived / removed posts are only visible to their author and admins
+        const privileged = req.user && (req.user.role === 'ADMIN' || req.user.id === post.user_id);
+        if (['ARCHIVED', 'REMOVED'].includes(post.status) && !privileged) {
+            return res.status(404).json({ message: 'Post not found.' });
+        }
         return res.json(toPostDTO(post));
     } catch (err) {
         console.error('getPost error:', err);
@@ -99,7 +105,7 @@ const createPost = async (req, res) => {
             neighbourhoodId: poster ? poster.neighbourhood_id : null,
         });
 
-        logAction(req.user.id, 'POST_CREATED', `post: ${post.post_id}, type: ${type}`, req.ip);
+        logAction(req.user.id, 'POST_CREATED', `post ${post.post_id} (${type}): "${title.trim().slice(0, 150)}" — ${description.trim().slice(0, 400)}`, req.ip);
         emitToBoard('post:new', { ...toPostDTO(post), likedByMe: false });
         return res.status(201).json(toPostDTO(post));
     } catch (err) {
@@ -141,6 +147,59 @@ const deletePostAdmin = async (req, res) => {
     } catch (err) {
         console.error('deletePostAdmin error:', err);
         return res.status(500).json({ message: 'Error deleting post.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// GET /admin/posts — every post, any status (ADMIN)
+// Query: status, type, search, page, limit
+// ----------------------------------------------------------------
+const listPostsAdmin = async (req, res) => {
+    try {
+        const { status, type, search, page, limit } = req.query;
+        const result = await Post.listForAdmin({ status, type, search }, page, limit);
+        return res.json({ ...result, data: toPostDTOList(result.data) });
+    } catch (err) {
+        console.error('listPostsAdmin error:', err);
+        return res.status(500).json({ message: 'Error loading posts.' });
+    }
+};
+
+// ----------------------------------------------------------------
+// PATCH /admin/posts/:id/moderate — archive, remove or restore a post (ADMIN)
+// Body: { action: 'ARCHIVE' | 'REMOVE' | 'RESTORE', reason? }
+// The author is told why; the post and its comments stay on record.
+// ----------------------------------------------------------------
+const moderatePost = async (req, res) => {
+    try {
+        const action = String(req.body.action || '').toUpperCase();
+        if (!['ARCHIVE', 'REMOVE', 'RESTORE'].includes(action)) {
+            return res.status(400).json({ message: 'Action must be ARCHIVE, REMOVE or RESTORE.' });
+        }
+        const reason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 255) : '';
+        if (action !== 'RESTORE' && reason.length < 3) {
+            return res.status(400).json({ message: 'Please give a reason — the author is told why.' });
+        }
+        const post = await Post.moderate(req.params.id, req.user.id, action, reason);
+        if (!post) return res.status(404).json({ message: 'Post not found.' });
+
+        logAction(req.user.id, { ARCHIVE: 'POST_ARCHIVED_BY_ADMIN', REMOVE: 'POST_REMOVED_BY_ADMIN', RESTORE: 'POST_RESTORED_BY_ADMIN' }[action],
+            `post ${post.post_id} "${post.title}" by user ${post.user_id}${reason ? ', reason: ' + reason : ''}`, req.ip);
+
+        if (action === 'RESTORE') {
+            emitToBoard('post:new', { ...toPostDTO(post), likedByMe: false });
+            notify(post.user_id, { type: 'POST_RESTORED', title: 'Your post is back', body: `"${post.title}" was restored to the board.`, link: `/board/${post.post_id}` });
+        } else {
+            emitToBoard('post:removed', { postId: post.post_id });
+            notify(post.user_id, {
+                type: 'POST_MODERATED', title: action === 'REMOVE' ? 'Your post was removed' : 'Your post was archived',
+                body: `"${post.title}" was ${action === 'REMOVE' ? 'removed' : 'archived'} by an administrator. Reason: ${reason}`, link: '/board',
+            });
+        }
+        return res.json(toPostDTO(post));
+    } catch (err) {
+        console.error('moderatePost error:', err);
+        return res.status(500).json({ message: 'Error moderating the post.' });
     }
 };
 
@@ -188,7 +247,13 @@ const addComment = async (req, res) => {
             content: req.body.content.trim(),
         });
 
-        logAction(req.user.id, 'COMMENT_CREATED', `post: ${post.post_id}, comment: ${comment.comment_id}`, req.ip);
+        logAction(req.user.id, 'COMMENT_CREATED', `on post ${post.post_id}, comment ${comment.comment_id}: "${req.body.content.trim().slice(0, 500)}"`, req.ip);
+        if (post.user_id !== req.user.id) {
+            notify(post.user_id, {
+                type: 'POST_COMMENT', title: 'New comment on your post',
+                body: `${comment.author_first} ${comment.author_last} commented on "${post.title}".`, link: `/board/${post.post_id}`,
+            });
+        }
         emitToPost(post.post_id, 'comment:new', toCommentDTO(comment));
         await emitStats(post.post_id);
         return res.status(201).json(toCommentDTO(comment));
@@ -212,10 +277,13 @@ const deleteComment = async (req, res) => {
             return res.status(403).json({ message: 'You can only delete your own comments.' });
         }
         await Post.deleteComment(comment.comment_id);
+        if (isAdmin && comment.user_id !== req.user.id) {
+            notify(comment.user_id, { type: 'COMMENT_REMOVED', title: 'Your comment was removed', body: `An administrator removed your comment: "${comment.content.slice(0, 100)}"`, link: `/board/${comment.post_id}` });
+        }
         emitToPost(comment.post_id, 'comment:removed', { postId: comment.post_id, commentId: comment.comment_id });
         await emitStats(comment.post_id);
         logAction(req.user.id, isAdmin && comment.user_id !== req.user.id ? 'COMMENT_DELETED_BY_ADMIN' : 'COMMENT_DELETED',
-            `post: ${comment.post_id}, comment: ${comment.comment_id}`, req.ip);
+            `on post ${comment.post_id}, comment ${comment.comment_id} by user ${comment.user_id}: "${comment.content.slice(0, 300)}"`, req.ip);
         return res.json({ message: 'Comment deleted.' });
     } catch (err) {
         console.error('deleteComment error:', err);
@@ -231,6 +299,13 @@ const toggleLike = async (req, res) => {
         const post = await Post.getPostById(req.params.id);
         if (!post) return res.status(404).json({ message: 'Post not found.' });
         const result = await Post.toggleLike(post.post_id, req.user.id);
+        logAction(req.user.id, result.liked ? 'POST_LIKED' : 'POST_UNLIKED', `post: ${post.post_id} "${post.title}"`, req.ip);
+        if (result.liked && post.user_id !== req.user.id) {
+            notify(post.user_id, {
+                type: 'POST_LIKE', title: 'Someone liked your post', body: `Your post "${post.title}" now has ${result.likeCount} like${result.likeCount === 1 ? '' : 's'}.`,
+                link: `/board/${post.post_id}`,
+            });
+        }
         await emitStats(post.post_id);
         return res.json(result);
     } catch (err) {
@@ -240,6 +315,6 @@ const toggleLike = async (req, res) => {
 };
 
 module.exports = {
-    getPosts, getMyPosts, getPost, createPost, closePost, deletePostAdmin,
+    getPosts, getMyPosts, getPost, createPost, closePost, deletePostAdmin, listPostsAdmin, moderatePost,
     getComments, addComment, deleteComment, toggleLike,
 };

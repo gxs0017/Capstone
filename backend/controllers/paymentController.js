@@ -12,7 +12,9 @@ const ledger = require('../utils/paymentLedger');
 const stripeService = require('../services/stripe');
 const paypal = require('../services/paypal');
 const Payment = require('../models/Payment');
-const { PaymentDTO } = require('../dtos/PaymentDTO');
+const { PaymentDTO, PayoutDTO } = require('../dtos/PaymentDTO');
+const { notify } = require('../utils/notify');
+const { emitToUser } = require('../config/socket');
 const { logAction } = require('../models/AuditLog');
 
 /** Maps a PaymentError to its HTTP status; anything else is a 500. */
@@ -24,7 +26,12 @@ const respondError = (res, err, fallback) => {
     return res.status(500).json({ message: fallback });
 };
 
-const availableMethods = () => ({ paypal: paypal.isConfigured(), stripe: stripeService.isConfigured() });
+// Demo card: a stand-in for a card gateway while no Stripe secret key is set, for trying the whole
+// flow (escrow, 7-day hold, payouts) without a real charge. Needs PAYMENTS_DEMO=on and switches itself
+// off the moment real Stripe keys exist.
+const demoEnabled = () => process.env.PAYMENTS_DEMO === 'on' && !stripeService.isConfigured();
+
+const availableMethods = () => ({ paypal: paypal.isConfigured(), stripe: stripeService.isConfigured(), demo: demoEnabled() });
 
 // ----------------------------------------------------------------
 // GET /payments/methods — which online payment methods are switched on
@@ -52,6 +59,22 @@ const getSummary = async (req, res) => {
         });
     } catch (err) {
         return respondError(res, err, 'Error loading payment details.');
+    }
+};
+
+// ----------------------------------------------------------------
+// POST /payments/demo-pay — pay with the demo card (no real money moves)
+// Body: { bookingId }
+// ----------------------------------------------------------------
+const demoPay = async (req, res) => {
+    try {
+        if (!demoEnabled()) return res.status(503).json({ message: 'The demo card is not available.' });
+        const group = await ledger.getPayableGroup(Number(req.body.bookingId), req.user.id);
+        await ledger.recordPaymentSuccess({ group, payerId: req.user.id, method: 'demo', externalRef: `demo_${Date.now()}` });
+        logAction(req.user.id, 'PAYMENT_CONFIRMED', `booking: ${group.ids.join(',')}, method: demo card, total: $${group.total.toFixed(2)}`, req.ip);
+        return res.json({ message: 'Demo payment recorded.', paymentStatus: 'PAID' });
+    } catch (err) {
+        return respondError(res, err, 'Error recording the demo payment.');
     }
 };
 
@@ -156,9 +179,12 @@ const confirmPayment = async (req, res) => {
 // ----------------------------------------------------------------
 const getMyPayments = async (req, res) => {
     try {
-        const { paid, earned } = await Payment.getForUser(req.user.id);
+        const { paid, earned, balance, payouts } = await Payment.getForUser(req.user.id);
         return res.json({
             currency: ledger.CURRENCY,
+            holdDays: ledger.holdDays(),
+            balance,
+            payouts: payouts.map(PayoutDTO),
             paid:   { totals: paid.totals,   entries: paid.entries.map((r) => PaymentDTO(r)) },
             earned: { totals: earned.totals, entries: earned.entries.map((r) => PaymentDTO(r)) },
         });
@@ -173,7 +199,8 @@ const getMyPayments = async (req, res) => {
 const getAdminOverview = async (_req, res) => {
     try {
         const { totals, entries } = await Payment.getOverview();
-        return res.json({ currency: ledger.CURRENCY, totals, entries: entries.map((r) => PaymentDTO(r, { admin: true })) });
+        const payouts = await Payment.listAllPayouts();
+        return res.json({ currency: ledger.CURRENCY, totals, entries: entries.map((r) => PaymentDTO(r, { admin: true })), payouts: payouts.map(PayoutDTO) });
     } catch (err) {
         return respondError(res, err, 'Error loading the payments overview.');
     }
@@ -192,4 +219,46 @@ const settleNow = async (req, res) => {
     }
 };
 
-module.exports = { getMethods, getSummary, createPaymentIntent, confirmPayment, getMyPayments, getAdminOverview, settleNow, respondError };
+// ----------------------------------------------------------------
+// POST /payments/withdraw — provider withdraws everything past its 7-day hold
+// ----------------------------------------------------------------
+const withdraw = async (req, res) => {
+    try {
+        if (req.user.role !== 'PROVIDER') return res.status(403).json({ message: 'Only service providers have earnings to withdraw.' });
+        const payout = await ledger.withdrawAvailable(req.user.id);
+        if (!payout) {
+            const balance = await Payment.balanceFor(req.user.id);
+            return res.status(400).json({
+                message: balance.pending > 0
+                    ? `Nothing to withdraw yet — your earnings clear ${ledger.holdDays()} days after the job is credited.`
+                    : 'There is nothing available to withdraw.',
+            });
+        }
+        logAction(req.user.id, 'PAYOUT_REQUESTED', `payout: ${payout.payoutId}, amount: $${payout.amount.toFixed(2)}, payments: ${payout.payments}`, req.ip);
+        notify(req.user.id, { type: 'PAYOUT_REQUESTED', title: 'Withdrawal requested', body: `Your withdrawal of $${payout.amount.toFixed(2)} was requested and is being processed.`, link: '/wallet' });
+        emitToUser(req.user.id, 'booking:changed', { reason: 'payout', actorId: req.user.id });
+        return res.status(201).json({ message: `Withdrawal of $${payout.amount.toFixed(2)} requested.`, ...payout });
+    } catch (err) {
+        return respondError(res, err, 'Error requesting the withdrawal.');
+    }
+};
+
+// ----------------------------------------------------------------
+// PATCH /admin/payouts/:id/paid — admin marks a payout as sent (ADMIN)
+// ----------------------------------------------------------------
+const markPayoutPaid = async (req, res) => {
+    try {
+        const [rows] = await pool.execute("SELECT * FROM payouts WHERE payout_id = ? AND status = 'REQUESTED'", [req.params.id]);
+        const payout = rows[0];
+        if (!payout) return res.status(404).json({ message: 'No pending payout with that id.' });
+        await pool.execute("UPDATE payouts SET status = 'PAID', paid_at = NOW() WHERE payout_id = ?", [payout.payout_id]);
+        logAction(req.user.id, 'PAYOUT_PAID', `payout: ${payout.payout_id}, provider: ${payout.provider_id}, amount: $${Number(payout.amount).toFixed(2)}`, req.ip);
+        notify(payout.provider_id, { type: 'PAYOUT_PAID', title: 'Withdrawal sent', body: `Your withdrawal of $${Number(payout.amount).toFixed(2)} has been sent.`, link: '/wallet' });
+        emitToUser(payout.provider_id, 'booking:changed', { reason: 'payout', actorId: req.user.id });
+        return res.json({ message: 'Payout marked as paid.' });
+    } catch (err) {
+        return respondError(res, err, 'Error updating the payout.');
+    }
+};
+
+module.exports = { demoPay, withdraw, markPayoutPaid, getMethods, getSummary, createPaymentIntent, confirmPayment, getMyPayments, getAdminOverview, settleNow, respondError };

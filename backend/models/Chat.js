@@ -23,8 +23,8 @@ const findConversationByPair = async (userA, userB) => {
 const getConversationById = async (conversationId) => {
     const [rows] = await pool.execute(
         `SELECT c.*,
-                u1.first_name AS p1_first, u1.last_name AS p1_last,
-                u2.first_name AS p2_first, u2.last_name AS p2_last
+                u1.first_name AS p1_first, u1.last_name AS p1_last, u1.role AS p1_role,
+                u2.first_name AS p2_first, u2.last_name AS p2_last, u2.role AS p2_role
          FROM conversations c
          JOIN users u1 ON c.participant_one_id = u1.user_id
          JOIN users u2 ON c.participant_two_id = u2.user_id
@@ -64,6 +64,11 @@ const setPinnedBooking = async (conversationId, bookingId /* null to unpin */) =
     );
 };
 
+/** Make a conversation read-only for one participant (admin notices), or null to lift it. */
+const setReadOnlyFor = async (conversationId, userId) => {
+    await pool.execute('UPDATE conversations SET read_only_for = ? WHERE conversation_id = ?', [userId, conversationId]);
+};
+
 const isParticipant = async (conversationId, userId) => {
     const [rows] = await pool.execute(
         `SELECT 1 FROM conversations
@@ -78,8 +83,8 @@ const isParticipant = async (conversationId, userId) => {
 const listConversationsForUser = async (userId) => {
     const [rows] = await pool.execute(
         `SELECT c.*,
-                u1.first_name AS p1_first, u1.last_name AS p1_last,
-                u2.first_name AS p2_first, u2.last_name AS p2_last,
+                u1.first_name AS p1_first, u1.last_name AS p1_last, u1.role AS p1_role,
+                u2.first_name AS p2_first, u2.last_name AS p2_last, u2.role AS p2_role,
                 (SELECT COUNT(*) FROM messages m
                   WHERE m.conversation_id = c.conversation_id
                     AND m.sender_id <> ?
@@ -201,6 +206,7 @@ module.exports = {
     createConversation,
     getOrCreateConversation,
     setPinnedBooking,
+    setReadOnlyFor,
     isParticipant,
     listConversationsForUser,
     getUnreadCountForUser,

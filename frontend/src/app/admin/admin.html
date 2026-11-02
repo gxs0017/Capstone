@@ -4,51 +4,57 @@
     <p>Manage users, view stats, and oversee the platform</p>
   </div>
 
-  <!-- Stats Cards -->
+  <!-- Stats Cards (pushed live by the server, once a second) -->
   @if (stats()) {
+    <div class="live-line">
+      <span class="live-dot" [class.live-dot--on]="live()"></span>
+      {{ live() ? 'Live' : 'Connecting…' }} · {{ stats()!.onlineNow ?? 0 }} online now · {{ stats()!.actionsToday ?? 0 }} actions today
+    </div>
     <div class="stats-grid">
-      <mat-card class="stat-card">
-        <mat-card-content>
-          <mat-icon class="stat-icon">people</mat-icon>
-          <div class="stat-value">{{ stats()!.totalUsers }}</div>
-          <div class="stat-label">Total Users</div>
-        </mat-card-content>
-      </mat-card>
-      <mat-card class="stat-card">
-        <mat-card-content>
-          <mat-icon class="stat-icon">engineering</mat-icon>
-          <div class="stat-value">{{ stats()!.totalProviders }}</div>
-          <div class="stat-label">Providers</div>
-        </mat-card-content>
-      </mat-card>
-      <mat-card class="stat-card">
-        <mat-card-content>
-          <mat-icon class="stat-icon">person_search</mat-icon>
-          <div class="stat-value">{{ stats()!.totalRequesters }}</div>
-          <div class="stat-label">Requesters</div>
-        </mat-card-content>
-      </mat-card>
-      <mat-card class="stat-card">
-        <mat-card-content>
-          <mat-icon class="stat-icon">event_note</mat-icon>
-          <div class="stat-value">{{ stats()!.totalBookings }}</div>
-          <div class="stat-label">Bookings</div>
-        </mat-card-content>
-      </mat-card>
-      <mat-card class="stat-card">
-        <mat-card-content>
-          <mat-icon class="stat-icon warn-icon">pending_actions</mat-icon>
-          <div class="stat-value">{{ stats()!.pendingBookings }}</div>
-          <div class="stat-label">Pending</div>
-        </mat-card-content>
-      </mat-card>
-      <mat-card class="stat-card">
-        <mat-card-content>
-          <mat-icon class="stat-icon error-icon">block</mat-icon>
-          <div class="stat-value">{{ stats()!.blockedUsers }}</div>
-          <div class="stat-label">Blocked</div>
-        </mat-card-content>
-      </mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon">people</mat-icon>
+        <div class="stat-value">{{ stats()!.totalUsers }}</div><div class="stat-label">Total Users</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon">engineering</mat-icon>
+        <div class="stat-value">{{ stats()!.totalProviders }}</div><div class="stat-label">Providers</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon">person_search</mat-icon>
+        <div class="stat-value">{{ stats()!.totalRequesters }}</div><div class="stat-label">Requesters</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon">event_note</mat-icon>
+        <div class="stat-value">{{ stats()!.totalBookings }}</div><div class="stat-label">Bookings</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon warn-icon">pending_actions</mat-icon>
+        <div class="stat-value">{{ stats()!.pendingBookings }}</div><div class="stat-label">Pending</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon warn-icon">report</mat-icon>
+        <div class="stat-value">{{ stats()!.openIssues ?? 0 }}</div><div class="stat-label">Open issues</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon">lock_clock</mat-icon>
+        <div class="stat-value">{{ stats()!.heldAmount ?? 0 | currency }}</div><div class="stat-label">Held in escrow</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon warn-icon">account_balance</mat-icon>
+        <div class="stat-value">{{ stats()!.pendingPayouts ?? 0 }}</div><div class="stat-label">Payouts to send</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon">forum</mat-icon>
+        <div class="stat-value">{{ stats()!.activePosts ?? 0 }}</div><div class="stat-label">Live posts</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon error-icon">gavel</mat-icon>
+        <div class="stat-value">{{ stats()!.flaggedMessages ?? 0 }}</div><div class="stat-label">Flagged messages</div>
+      </mat-card-content></mat-card>
+      <mat-card class="stat-card"><mat-card-content>
+        <mat-icon class="stat-icon error-icon">block</mat-icon>
+        <div class="stat-value">{{ stats()!.blockedUsers }}</div><div class="stat-label">Blocked</div>
+      </mat-card-content></mat-card>
     </div>
   }
 
@@ -67,6 +73,9 @@
     <button mat-stroked-button [class.tab-active]="tab() === 'moderation'" (click)="tab.set('moderation')">
       <mat-icon>gavel</mat-icon> Moderation
     </button>
+    <button mat-stroked-button [class.tab-active]="tab() === 'posts'" (click)="tab.set('posts')">
+      <mat-icon>forum</mat-icon> Posts
+    </button>
     <button mat-stroked-button [class.tab-active]="tab() === 'payments'" (click)="tab.set('payments')">
       <mat-icon>payments</mat-icon> Payments
     </button>
@@ -77,7 +86,11 @@
   }
 
   @if (tab() === 'logs') {
-    <app-admin-logs></app-admin-logs>
+    <app-admin-logs [userFilter]="logUser()"></app-admin-logs>
+  }
+
+  @if (tab() === 'posts') {
+    <app-admin-posts></app-admin-posts>
   }
 
   @if (tab() === 'payments') {
@@ -167,6 +180,12 @@
                 @if (actionLoading() === user.id) {
                   <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
                 } @else {
+                  <button mat-icon-button matTooltip="Message this user" (click)="messageUser(user)">
+                    <mat-icon>chat</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="See everything this user has done" (click)="viewActivity(user)">
+                    <mat-icon>history</mat-icon>
+                  </button>
                   <button mat-icon-button matTooltip="Edit profile" (click)="startEdit(user)">
                     <mat-icon>edit</mat-icon>
                   </button>

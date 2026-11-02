@@ -11,7 +11,10 @@ export interface Conversation {
     id: number;
     firstName: string;
     lastName: string;
+    role?: string;
   };
+  /** An admin notice: you can read it but not reply. */
+  readOnly?: boolean;
   pinnedBookingId: number | null;
   unreadCount: number;
   createdAt: string;

@@ -170,3 +170,15 @@ button:focus-visible,
   background: var(--color-info-bg);
   color: var(--color-info-on-bg);
 }
+
+/* Notification dropdown (the menu panel lives outside the navbar's own styles) */
+.notif-menu.mat-mdc-menu-panel { min-width: 340px; max-width: 380px; max-height: 70vh; }
+.notif-menu .notif-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px 4px; }
+.notif-menu .notif-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; opacity: .6; }
+.notif-menu .notif-item.mat-mdc-menu-item { height: auto; min-height: 56px; padding-top: 10px; padding-bottom: 10px; align-items: flex-start; }
+.notif-menu .notif-item .mat-mdc-menu-item-text { display: flex; align-items: flex-start; gap: 12px; white-space: normal; }
+.notif-menu .notif-text { display: flex; flex-direction: column; gap: 2px; white-space: normal; }
+.notif-menu .notif-title { font-weight: 600; font-size: .9rem; }
+.notif-menu .notif-body { font-size: .82rem; opacity: .8; line-height: 1.3; }
+.notif-menu .notif-time { font-size: .72rem; opacity: .55; }
+.notif-menu .notif-unread { background: color-mix(in srgb, var(--mat-sys-primary, #1976d2) 9%, transparent); }

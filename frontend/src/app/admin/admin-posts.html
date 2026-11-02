@@ -1,0 +1,91 @@
+<div class="filter-bar">
+  <mat-form-field appearance="outline" class="filter-field">
+    <mat-label>Search title, text, author or post #</mat-label>
+    <input matInput [formControl]="searchFilter" placeholder="e.g. plumber" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="filter-field">
+    <mat-label>Status</mat-label>
+    <mat-select [formControl]="statusFilter">
+      <mat-option value="">All posts</mat-option>
+      @for (s of statuses; track s) { <mat-option [value]="s">{{ s }}</mat-option> }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (message()) { <div class="action-message">{{ message() }}</div> }
+
+@if (loading()) {
+  <div class="state-center"><mat-progress-spinner mode="indeterminate" diameter="44"></mat-progress-spinner></div>
+} @else if (posts().length === 0) {
+  <div class="state-center"><mat-icon class="empty-icon">forum</mat-icon><h3>No posts found</h3></div>
+} @else {
+  @for (p of posts(); track p.postId) {
+    <mat-card class="post-admin-card">
+      <mat-card-content>
+        <div class="post-admin-top">
+          <span class="status-pill" [ngClass]="'s-' + p.status">{{ p.status }}</span>
+          <span class="post-admin-title">{{ p.title }}</span>
+          <span class="post-admin-meta">#{{ p.postId }} · {{ p.type }}</span>
+        </div>
+        <p class="post-admin-desc">{{ p.description }}</p>
+        <div class="post-admin-meta">
+          <span>By {{ p.poster.firstName }} {{ p.poster.lastName }} ({{ p.poster.role }}, #{{ p.poster.id }})</span>
+          <span>{{ p.createdAt | date:'medium' }}</span>
+          @if (p.city) { <span>{{ p.city }}</span> }
+          <span>{{ p.likeCount }} likes · {{ p.commentCount }} comments</span>
+        </div>
+        @if (p.moderationReason) {
+          <div class="mod-note"><strong>Admin note:</strong> {{ p.moderationReason }}</div>
+        }
+
+        <div class="post-admin-actions">
+          @if (busyId() === p.postId) {
+            <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+          } @else {
+            <a mat-stroked-button [routerLink]="['/board', p.postId]"><mat-icon>open_in_new</mat-icon> View &amp; comments</a>
+            @if (p.status === 'OPEN' || p.status === 'CLOSED') {
+              <button mat-stroked-button (click)="begin(p, 'ARCHIVE')"><mat-icon>archive</mat-icon> Archive</button>
+              <button mat-stroked-button color="warn" (click)="begin(p, 'REMOVE')"><mat-icon>delete</mat-icon> Remove</button>
+            } @else {
+              <button mat-stroked-button color="primary" (click)="restore(p)"><mat-icon>restore</mat-icon> Restore</button>
+              @if (p.status === 'ARCHIVED') {
+                <button mat-stroked-button color="warn" (click)="begin(p, 'REMOVE')"><mat-icon>delete</mat-icon> Remove</button>
+              }
+            }
+          }
+        </div>
+
+        @if (acting()?.post?.postId === p.postId) {
+          <div class="cancel-panel">
+            <h4>{{ acting()!.action === 'REMOVE' ? 'Remove' : 'Archive' }} this post</h4>
+            <p class="cancel-hint">
+              {{ acting()!.action === 'REMOVE'
+                  ? 'It disappears from the board for everyone. It stays on record for investigations.'
+                  : 'It is hidden from the board but kept, and can be restored any time.' }}
+              The author is told why.
+            </p>
+            <mat-form-field appearance="outline" class="reason-field">
+              <mat-label>Reason (required)</mat-label>
+              <input matInput maxlength="255" [formControl]="reasonCtl" placeholder="e.g. Contains personal contact details" />
+            </mat-form-field>
+            <div class="cancel-actions">
+              <button mat-button (click)="cancel()">Cancel</button>
+              <button mat-flat-button [color]="acting()!.action === 'REMOVE' ? 'warn' : 'primary'"
+                      [disabled]="(reasonCtl.value || '').trim().length < 3" (click)="confirm()">
+                {{ acting()!.action === 'REMOVE' ? 'Remove post' : 'Archive post' }}
+              </button>
+            </div>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (totalPages() > 1) {
+    <div class="pagination">
+      <button mat-icon-button [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)"><mat-icon>chevron_left</mat-icon></button>
+      <span class="page-info">Page {{ currentPage() }} of {{ totalPages() }} · {{ total() }} posts</span>
+      <button mat-icon-button [disabled]="currentPage() === totalPages()" (click)="goToPage(currentPage() + 1)"><mat-icon>chevron_right</mat-icon></button>
+    </div>
+  }
+}

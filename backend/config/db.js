@@ -18,6 +18,10 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit:    10,
     queueLimit:         0,
+    // Keep idle connections to the cloud database alive so they aren't silently dropped (ETIMEDOUT)
+    enableKeepAlive:    true,
+    keepAliveInitialDelay: 10000,
+    connectTimeout:     20000,
 });
 
 module.exports = pool;

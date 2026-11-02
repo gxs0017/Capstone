@@ -16,7 +16,10 @@ const ConversationDTO = (row, viewerId) => {
             id:        viewerIsOne ? row.participant_two_id : row.participant_one_id,
             firstName: viewerIsOne ? row.p2_first : row.p1_first,
             lastName:  viewerIsOne ? row.p2_last  : row.p1_last,
+            role:      viewerIsOne ? row.p2_role  : row.p1_role,
         },
+        // An admin notice: the viewer can read it but not reply
+        readOnly:        row.read_only_for != null && row.read_only_for === viewerId,
         pinnedBookingId: row.booking_id,
         unreadCount:     row.unread_count !== undefined ? Number(row.unread_count) : 0,
         createdAt:       row.created_at,

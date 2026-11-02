@@ -6,9 +6,12 @@
 //   2. A successful online payment marks the booking(s) PAID and writes one
 //      `payments` ledger row per session with status HELD (the platform is
 //      holding the money, the provider hasn't earned it yet).
-//   3. When the booking is COMPLETED the row becomes RELEASED (the provider's
-//      earnings). Cancel / decline / expiry sets the booking REFUNDED, and
-//      settleRefunds() returns the money through the original gateway.
+//   3. Once the session has happened and nobody raised an issue the booking is
+//      COMPLETED automatically (see utils/payoutJobs.js); the requester can also
+//      confirm it sooner. The row then becomes RELEASED the same day — credited
+//      to the provider's balance — but can only be WITHDRAWN after
+//      PAYOUT_HOLD_DAYS (7). Cancel / decline / expiry sets the booking
+//      REFUNDED, and settleRefunds() returns the money through the original gateway.
 //
 // A weekly pack is one payment covering every still-payable session; each
 // session still gets its own ledger row so cancelling a single session only
@@ -31,6 +34,9 @@ class PaymentError extends Error {
         this.code = code;
     }
 }
+
+/** Days between a payment being credited to the provider and it becoming withdrawable. */
+const holdDays = () => Math.max(0, Number(process.env.PAYOUT_HOLD_DAYS) || 7);
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 const toCents = (n) => Math.round(Number(n) * 100);
@@ -144,6 +150,7 @@ async function markFailed(ids) {
 // ── Refunds ──────────────────────────────────────────────────────────────────
 
 async function gatewayRefund(p) {
+    if (p.method === 'demo') return { demo: true }; // nothing was charged, so nothing to send back
     if (p.method === 'paypal') {
         return paypal.refundCapture(p.external_ref, Number(p.amount), p.currency, `refund-payment-${p.payment_id}`);
     }
@@ -164,9 +171,10 @@ async function gatewayRefund(p) {
  */
 async function settleRefunds() {
     const [rows] = await pool.execute(
-        `SELECT p.payment_id, p.method, p.external_ref, p.amount, p.currency
+        `SELECT p.payment_id, p.booking_id, p.payer_id, p.provider_id, p.method, p.external_ref, p.amount, p.currency, s.service_name
          FROM payments p
          JOIN bookings b ON b.booking_id = p.booking_id
+         JOIN services s ON s.service_id = b.service_id
          WHERE p.status IN ('HELD','REFUND_FAILED') AND b.payment_status = 'REFUNDED'`
     );
 
@@ -179,6 +187,13 @@ async function settleRefunds() {
                 [p.payment_id]
             );
             refunded++;
+            logAction(null, 'PAYMENT_REFUNDED', `payment ${p.payment_id}, booking ${p.booking_id}: $${Number(p.amount).toFixed(2)} returned to user ${p.payer_id} via ${p.method}`, null);
+            require('./notify').notify(p.payer_id, {
+                type: 'PAYMENT_REFUNDED', title: 'Refund issued',
+                body: `$${Number(p.amount).toFixed(2)} for ${p.service_name} (booking #${p.booking_id}) was refunded to your ${p.method === 'paypal' ? 'PayPal account' : p.method === 'demo' ? 'demo card' : 'card'}.`,
+                link: '/wallet',
+            });
+            require('./realtime').notifyBookings(p.booking_id, 'refunded', null);
         } catch (err) {
             await pool.execute(
                 "UPDATE payments SET status = 'REFUND_FAILED', refund_error = ? WHERE payment_id = ?",
@@ -190,15 +205,81 @@ async function settleRefunds() {
     return { attempted: rows.length, refunded };
 }
 
-/** HELD -> RELEASED for every payment whose booking is now COMPLETED. */
+/**
+ * HELD -> RELEASED for every payment whose booking is COMPLETED (and has no open
+ * issue): the money lands in the provider's balance today, and `available_at`
+ * is set `holdDays()` ahead — the earliest they can withdraw it.
+ */
 async function releaseCompleted() {
-    const [result] = await pool.execute(
-        `UPDATE payments p
+    const [due] = await pool.execute(
+        `SELECT p.payment_id, p.provider_id, p.provider_amount, p.booking_id, s.service_name
+         FROM payments p
          JOIN bookings b ON b.booking_id = p.booking_id
-         SET p.status = 'RELEASED', p.released_at = NOW()
-         WHERE p.status = 'HELD' AND b.status = 'COMPLETED'`
+         JOIN services s ON s.service_id = b.service_id
+         WHERE p.status = 'HELD' AND b.status = 'COMPLETED' AND b.issue_reported_at IS NULL`
     );
+    if (due.length === 0) return 0;
+
+    const [result] = await pool.query(
+        `UPDATE payments
+         SET status = 'RELEASED', released_at = NOW(), available_at = DATE_ADD(NOW(), INTERVAL ? DAY)
+         WHERE payment_id IN (?) AND status = 'HELD'`,
+        [holdDays(), due.map((d) => d.payment_id)]
+    );
+
+    // Tell each provider what was credited and when they can withdraw it
+    const { notify } = require('./notify');
+    const availableOn = new Date(Date.now() + holdDays() * 86400000)
+        .toLocaleDateString('en-CA', { dateStyle: 'medium' });
+    const byProvider = new Map();
+    due.forEach((d) => {
+        const e = byProvider.get(d.provider_id) || { total: 0, services: new Set() };
+        e.total += Number(d.provider_amount);
+        e.services.add(d.service_name);
+        byProvider.set(d.provider_id, e);
+    });
+    byProvider.forEach((e, providerId) => {
+        notify(providerId, {
+            type: 'PAYMENT_CREDITED',
+            title: 'Payment credited to your balance',
+            body: `$${e.total.toFixed(2)} for ${[...e.services].join(', ')} was credited today. You can withdraw it from ${availableOn}.`,
+            link: '/wallet',
+        });
+    });
+    logAction(null, 'PAYMENT_RELEASED', `payments: ${due.map((d) => d.payment_id).join(',')}, available after ${holdDays()} days`, null);
     return result.affectedRows;
+}
+
+/**
+ * Move everything a provider can withdraw right now (credited, 7-day hold over,
+ * not yet withdrawn) into one payout request. Returns null if nothing is available.
+ */
+async function withdrawAvailable(providerId) {
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [rows] = await conn.execute(
+            `SELECT payment_id, provider_amount, currency FROM payments
+             WHERE provider_id = ? AND status = 'RELEASED' AND payout_id IS NULL AND available_at <= NOW()
+             FOR UPDATE`,
+            [providerId]
+        );
+        if (rows.length === 0) {
+            await conn.rollback();
+            return null;
+        }
+        const total = round2(rows.reduce((sum, r) => sum + Number(r.provider_amount), 0));
+        const [ins] = await conn.execute(
+            'INSERT INTO payouts (provider_id, amount, currency) VALUES (?, ?, ?)', [providerId, total, CURRENCY]);
+        await conn.query('UPDATE payments SET payout_id = ? WHERE payment_id IN (?)', [ins.insertId, rows.map((r) => r.payment_id)]);
+        await conn.commit();
+        return { payoutId: ins.insertId, amount: total, payments: rows.length };
+    } catch (err) {
+        await conn.rollback().catch(() => {});
+        throw err;
+    } finally {
+        conn.release();
+    }
 }
 
 /** Run both settlement passes; never throws (callers fire-and-forget this). */
@@ -218,6 +299,8 @@ module.exports = {
     round2,
     toCents,
     feePercent,
+    holdDays,
+    withdrawAvailable,
     getPayableGroup,
     recordPaymentSuccess,
     markFailed,

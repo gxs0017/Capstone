@@ -171,3 +171,12 @@
 .chip-released { background: var(--color-success-bg);  color: var(--color-success-on-bg); }
 .chip-refunded { background: var(--color-neutral-bg);  color: var(--color-neutral-on-bg); }
 .chip-failed   { background: var(--color-error-bg);    color: var(--color-error-on-bg); }
+
+.totals-grid--4 { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.withdraw-btn { margin-top: 8px; align-self: flex-start; }
+.payouts { margin: 8px 0 24px; }
+.payouts h3 { font-size: 1rem; margin: 0 0 8px; }
+.payout-row { display: flex; align-items: center; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+
+.entry--refunded { opacity: 0.7; }
+.entry--refunded .entry-price { text-decoration: line-through; }

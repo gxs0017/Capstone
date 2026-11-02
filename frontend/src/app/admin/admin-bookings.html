@@ -56,6 +56,12 @@
               @if (b.price !== null) { &middot; {{ b.price | currency }} ({{ b.paymentStatus }}) }
               @if (b.bookingType === 'RECURRING') { &middot; Session {{ b.sessionNumber }}/{{ b.sessionsInBatch }} }
             </div>
+            @if (b.issue) {
+              <div class="issue-note"><mat-icon>report</mat-icon> Issue reported {{ b.issue.reportedAt | date:'medium' }}: "{{ b.issue.note }}" — payment is on hold</div>
+            }
+            @if (b.autoCompleted) {
+              <div class="user-meta">Completed automatically after the session (no issue raised)</div>
+            }
             @if (b.cancellation) {
               <div class="user-meta">
                 Cancelled {{ b.cancellation.at | date:'medium' }}
@@ -70,13 +76,42 @@
           <div class="user-actions">
             @if (actionLoading() === b.bookingId) {
               <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
-            } @else if (b.canCancel) {
-              <button mat-stroked-button color="warn" (click)="cancel(b)">
-                <mat-icon>close</mat-icon> Cancel
-              </button>
+            } @else {
+              @if (b.issue) {
+                <button mat-stroked-button color="primary" (click)="resolve(b)" matTooltip="Count the job as done and credit the provider">
+                  <mat-icon>done_all</mat-icon> Clear issue
+                </button>
+              }
+              @if (b.canCancel) {
+                <button mat-stroked-button color="warn" (click)="openCancel(b)">
+                  <mat-icon>close</mat-icon> Cancel
+                </button>
+              }
             }
           </div>
         </mat-card-content>
+
+        @if (cancelTarget()?.bookingId === b.bookingId) {
+          <div class="cancel-panel">
+            <h4>Cancel booking #{{ b.bookingId }}</h4>
+            <p class="cancel-hint">
+              The requester and the provider are each sent this message in their Messages inbox.
+              The requester can only read it; the provider can reply to ask why.
+              @if (b.paymentStatus === 'PAID') { The requester's payment is refunded. }
+            </p>
+            <mat-form-field appearance="outline" class="reason-field">
+              <mat-label>Reason (required)</mat-label>
+              <textarea matInput rows="2" maxlength="255" [formControl]="reasonCtl" placeholder="e.g. Provider reported unavailable / policy violation"></textarea>
+            </mat-form-field>
+            <pre class="notice-preview">{{ preview(b) }}</pre>
+            <div class="cancel-actions">
+              <button mat-button (click)="closeCancel()">Keep booking</button>
+              <button mat-flat-button color="warn" [disabled]="(reasonCtl.value || '').trim().length < 3" (click)="confirmCancel()">
+                <mat-icon>send</mat-icon> Cancel &amp; notify both
+              </button>
+            </div>
+          </div>
+        }
       </mat-card>
     }
   </div>

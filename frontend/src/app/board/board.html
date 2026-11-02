@@ -2,12 +2,12 @@
   <div class="board-header">
     <div>
       <h1>Community Board</h1>
-      <p>Your neighbourhood feed — ask, share, offer and help each other out.</p>
+      <p>Your neighborhood feed — ask, share, offer and help each other out.</p>
     </div>
     <div class="area-toggle" role="group" aria-label="Which area to show">
       <button type="button" [class.area-active]="areaMode() === 'HOOD'" [disabled]="!myHood()"
               (click)="setArea('HOOD')">
-        <mat-icon>home_pin</mat-icon> {{ myHood() ? myHood() : 'My neighbourhood' }}
+        <mat-icon>home_pin</mat-icon> {{ myHood() ? myHood() : 'My neighborhood' }}
       </button>
       <button type="button" [class.area-active]="areaMode() === 'CITY'" [disabled]="!myCity()"
               (click)="setArea('CITY')">
