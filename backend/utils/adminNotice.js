@@ -21,14 +21,14 @@ const { notify } = require('./notify');
 
 const stamp = (d) => (d ? new Date(d).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' }) : 'Not scheduled');
 
-const noticeText = (b, reason) => [
+const noticeText = (b, reason, closing = 'Money will be refunded to the requester as this service is nulled.') => [
     `Booking ID : ${b.booking_id}`,
     `Date: ${stamp(b.scheduled_date)}`,
     `Service Provider: ${b.provider_name}`,
     `Service Requester: ${b.requester_name}`,
     `Reason: ${reason}`,
     '',
-    'Money will be refunded to the requester as this service is nulled.',
+    closing,
 ].join('\n');
 
 /** Send `text` from the admin to one user in their admin conversation. */
@@ -47,7 +47,7 @@ const sendFromAdmin = async ({ adminId, userId, bookingId, text, readOnly }) => 
  * Message both parties about an admin cancellation.
  * @returns {{ text: string, requesterId: number, providerId: number } | null}
  */
-const sendCancellationNotices = async ({ bookingId, adminId, reason }) => {
+const sendCancellationNotices = async ({ bookingId, adminId, reason, closing, headline, skipUserId }) => {
     const [rows] = await pool.execute(
         `SELECT b.booking_id, b.scheduled_date, b.requester_id, pd.user_id AS provider_id,
                 CONCAT(rq.first_name, ' ', rq.last_name) AS requester_name,
@@ -62,16 +62,16 @@ const sendCancellationNotices = async ({ bookingId, adminId, reason }) => {
     const b = rows[0];
     if (!b) return null;
 
-    const text = noticeText(b, reason);
-    // Both at once, so neither person waits on the other
+    const text = noticeText(b, reason, closing);
+    // Both at once, so neither person waits on the other (skipUserId: someone who can no longer sign in)
     await Promise.all([
-        sendFromAdmin({ adminId, userId: b.requester_id, bookingId, text, readOnly: true }),
-        sendFromAdmin({ adminId, userId: b.provider_id, bookingId, text, readOnly: false }),
+        b.requester_id !== skipUserId && sendFromAdmin({ adminId, userId: b.requester_id, bookingId, text, readOnly: true }),
+        b.provider_id !== skipUserId && sendFromAdmin({ adminId, userId: b.provider_id, bookingId, text, readOnly: false }),
     ]);
 
-    const body = `Booking #${b.booking_id} was cancelled by an administrator. Reason: ${reason}. Open Messages for the details.`;
-    notify(b.requester_id, { type: 'ADMIN_MESSAGE', title: 'Message from admin', body, link: '/messages' });
-    notify(b.provider_id, { type: 'ADMIN_MESSAGE', title: 'Message from admin', body, link: '/messages' });
+    const body = `Booking #${b.booking_id} ${headline || 'was cancelled by an administrator'}. Reason: ${reason}. Open Messages for the details.`;
+    [b.requester_id, b.provider_id].filter((id) => id !== skipUserId)
+        .forEach((id) => notify(id, { type: 'ADMIN_MESSAGE', title: 'Message from admin', body, link: '/messages' }));
     return { text, requesterId: b.requester_id, providerId: b.provider_id };
 };
 

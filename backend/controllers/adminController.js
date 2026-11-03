@@ -8,6 +8,7 @@ const { logAction, listAudit } = require('../models/AuditLog');
 const { computeStats } = require('../utils/adminLive');
 const { expireStalePending } = require('../utils/bookingExpiry');
 const ledger = require('../utils/paymentLedger');
+const { sendCancellationNotices } = require('../utils/adminNotice');
 const Chat = require('../models/Chat');
 const { emitToConversation } = require('../config/socket');
 const { toFlaggedMessageDTOList, toMessageDTOList } = require('../mappers/chatMapper');
@@ -294,6 +295,12 @@ const deleteUser = async (req, res) => {
             return res.status(400).json({ message: 'Blocking or deleting an admin user is not allowed.' });
         }
 
+        const [affected] = await conn.execute(
+            `SELECT b.booking_id FROM bookings b
+             JOIN provider_details pd ON pd.provider_detail_id = b.provider_detail_id
+             WHERE b.status IN ('PENDING', 'CONFIRMED') AND (b.requester_id = ? OR pd.user_id = ?)`,
+            [userId, userId]
+        );
         await conn.beginTransaction();
         await conn.execute(
             `UPDATE bookings b
@@ -309,6 +316,10 @@ const deleteUser = async (req, res) => {
 
         logAction(req.user.id, 'USER_DELETED', 'target: ' + req.params.id, req.ip);
         ledger.settle(); // return any prepaid money for the sessions that were just cancelled
+        // The other person on each cancelled booking is told (the deleted account can't sign in)
+        affected.forEach((a) => sendCancellationNotices({
+            bookingId: a.booking_id, adminId: req.user.id, reason: 'Account deleted by admin', skipUserId: userId,
+        }).catch((err) => console.error('admin cancellation notice failed:', err.message)));
         return res.json({ message: 'User deleted successfully.' });
     } catch (err) {
         await conn.rollback().catch(() => {});

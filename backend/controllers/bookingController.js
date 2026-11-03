@@ -523,6 +523,13 @@ const resolveIssue = async (req, res) => {
              WHERE booking_id = ?`, [booking.booking_id]);
         logAction(req.user.id, 'BOOKING_ISSUE_RESOLVED', `booking: ${booking.booking_id}${req.body.note ? ', note: ' + String(req.body.note).slice(0, 200) : ''}`, req.ip);
         notifyBookings(booking.booking_id, 'completed', req.user.id);
+        // Both people are told what the admin decided; only the provider can write back
+        sendCancellationNotices({
+            bookingId: booking.booking_id, adminId: req.user.id,
+            reason: `The reported issue was reviewed by an administrator${req.body.note ? ': ' + String(req.body.note).slice(0, 200) : ''}`,
+            closing: 'The job counts as done, so the payment is released to the provider.',
+            headline: 'had its reported issue resolved by an administrator',
+        }).catch((err) => console.error('admin resolution notice failed:', err.message));
         ledger.settle();
         return res.json({ message: 'Issue cleared — the booking is completed and the provider is credited.' });
     } catch (err) {
