@@ -17,6 +17,10 @@ mat-toolbar {
 }
 
 .nav-brand {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.01em;
@@ -70,3 +74,15 @@ mat-toolbar a:hover {
   letter-spacing: 0.06em;
   margin-right: 4px;
 }
+
+/* Logo beside the name, top-left */
+.nav-logo {
+  height: 44px;
+  width: 44px;
+  object-fit: cover;
+  border-radius: 10px;
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease;
+}
+.nav-brand:hover .nav-logo { transform: scale(1.05); }
